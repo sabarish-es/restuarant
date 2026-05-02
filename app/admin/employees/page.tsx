@@ -61,15 +61,16 @@ export default function EmployeesPage() {
         hire_date: new Date().toISOString().split('T')[0], // Set to today's date
       };
       
+      console.log('[v0] Sending employee data:', employeeData);
       await employeeApi.create(employeeData);
       setFormData({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'cashier', phone: '' });
       setShowAddModal(false);
-      fetchEmployees();
+      await fetchEmployees();
       alert('Employee added successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to add employee';
       alert(`Error: ${errorMsg}`);
-      console.error('[v0] Failed to add employee:', errorMsg);
+      console.error('[v0] Failed to add employee:', errorMsg, error);
     }
   };
 

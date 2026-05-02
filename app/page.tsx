@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { authApi } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,30 +20,35 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Login failed');
+      if (!username.trim() || !password.trim()) {
+        setError('Please enter username and password');
+        setLoading(false);
+        return;
       }
 
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      const data = await authApi.login(username.trim(), password.trim());
+      
+      if (data.token && data.user) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Route based on role
-      if (data.user.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else if (data.user.role === 'cashier') {
-        router.push('/cashier');
-      } else if (data.user.role === 'kitchen') {
-        router.push('/kitchen');
+        // Route based on role
+        if (data.user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else if (data.user.role === 'cashier') {
+          router.push('/cashier');
+        } else if (data.user.role === 'kitchen') {
+          router.push('/kitchen');
+        } else {
+          router.push('/admin/dashboard');
+        }
+      } else {
+        setError('Login response invalid. Please try again.');
       }
     } catch (err) {
-      setError('Invalid credentials. Please try again.');
+      const errorMsg = err instanceof Error ? err.message : 'Login failed';
+      console.error('[v0] Login error:', errorMsg);
+      setError(errorMsg || 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -99,7 +105,7 @@ export default function LoginPage() {
             <p className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</p>
             <p className="text-xs text-blue-800">
               <strong>Username:</strong> admin<br />
-              <strong>Password:</strong> (check your setup)
+              <strong>Password:</strong> admin123
             </p>
           </div>
         </CardContent>
