@@ -85,25 +85,33 @@ exports.getEmployees = async (req, res) => {
 exports.createEmployee = async (req, res) => {
   try {
     const { username, email, password, first_name, last_name, role, phone, hire_date } = req.body;
+    
+    // Validate required fields
+    if (!username || !email || !password || !first_name || !last_name) {
+      return res.status(400).json({ message: 'Missing required fields: username, email, password, first_name, last_name' });
+    }
+    
     const connection = await pool.getConnection();
 
     // Create user
     const hashedPassword = await bcrypt.hash(password, 10);
     const [userResult] = await connection.execute(
       'INSERT INTO users (username, email, password, role, phone) VALUES (?, ?, ?, ?, ?)',
-      [username, email, hashedPassword, role || 'cashier', phone]
+      [username, email, hashedPassword, role || 'cashier', phone || null]
     );
 
     // Create employee
     const [empResult] = await connection.execute(
       'INSERT INTO employees (user_id, first_name, last_name, role, phone, hire_date) VALUES (?, ?, ?, ?, ?, ?)',
-      [userResult.insertId, first_name, last_name, role || 'cashier', phone, hire_date]
+      [userResult.insertId, first_name, last_name, role || 'cashier', phone || null, hire_date || new Date().toISOString().split('T')[0]]
     );
 
     connection.release();
     res.status(201).json({ id: empResult.insertId, username, email, first_name, last_name });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error creating employee:', error);
+    const message = error.message || 'Server error';
+    res.status(500).json({ message: message.includes('Duplicate') ? 'Username or email already exists' : message });
   }
 };
 

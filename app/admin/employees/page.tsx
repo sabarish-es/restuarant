@@ -50,7 +50,18 @@ export default function EmployeesPage() {
     }
 
     try {
-      await employeeApi.create(formData);
+      const employeeData = {
+        username: formData.username.trim(),
+        email: formData.email.trim(),
+        password: formData.password.trim(),
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        role: formData.role || 'cashier',
+        phone: formData.phone?.trim() || null,
+        hire_date: new Date().toISOString().split('T')[0], // Set to today's date
+      };
+      
+      await employeeApi.create(employeeData);
       setFormData({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'cashier', phone: '' });
       setShowAddModal(false);
       fetchEmployees();
