@@ -67,8 +67,9 @@ exports.deleteCustomer = async (req, res) => {
 
 // Employees
 exports.getEmployees = async (req, res) => {
+  let connection = null;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
     const [employees] = await connection.execute(`
       SELECT e.*, u.username, u.email, u.role 
       FROM employees e 
@@ -78,20 +79,31 @@ exports.getEmployees = async (req, res) => {
     connection.release();
     res.json(employees);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching employees:', error.message);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch employees' });
   }
 };
 
 exports.createEmployee = async (req, res) => {
+  let connection = null;
   try {
     const { username, email, password, first_name, last_name, role, phone, hire_date } = req.body;
+    
+    console.log('[v0] Creating employee with data:', { username, email, first_name, last_name, role, phone });
     
     // Validate required fields
     if (!username || !email || !password || !first_name || !last_name) {
       return res.status(400).json({ message: 'Missing required fields: username, email, password, first_name, last_name' });
     }
     
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
     // Create user
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -99,19 +111,39 @@ exports.createEmployee = async (req, res) => {
       'INSERT INTO users (username, email, password, role, phone) VALUES (?, ?, ?, ?, ?)',
       [username, email, hashedPassword, role || 'cashier', phone || null]
     );
+    console.log('[v0] User created with ID:', userResult.insertId);
 
     // Create employee
     const [empResult] = await connection.execute(
       'INSERT INTO employees (user_id, first_name, last_name, role, phone, hire_date) VALUES (?, ?, ?, ?, ?, ?)',
       [userResult.insertId, first_name, last_name, role || 'cashier', phone || null, hire_date || new Date().toISOString().split('T')[0]]
     );
+    console.log('[v0] Employee created with ID:', empResult.insertId);
 
     connection.release();
     res.status(201).json({ id: empResult.insertId, username, email, first_name, last_name });
   } catch (error) {
-    console.error('[v0] Error creating employee:', error);
-    const message = error.message || 'Server error';
-    res.status(500).json({ message: message.includes('Duplicate') ? 'Username or email already exists' : message });
+    console.error('[v0] Error creating employee:', error.message, error.code);
+    
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    
+    let message = 'Failed to create employee';
+    
+    if (error.message && error.message.includes('Duplicate')) {
+      message = 'Username or email already exists';
+    } else if (error.code === 'ER_DUP_ENTRY') {
+      message = 'Username or email already exists';
+    } else if (error.message) {
+      message = error.message;
+    }
+    
+    res.status(500).json({ message });
   }
 };
 
