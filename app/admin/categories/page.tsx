@@ -6,10 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Edit2, Trash2, Plus } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { categoryApi } from '@/lib/api';
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -20,16 +22,15 @@ export default function CategoriesPage() {
   }, []);
 
   const fetchCategories = async () => {
-    const token = localStorage.getItem('token');
+    setLoading(true);
+    setError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setCategories(await response.json());
-      }
+      const data = await categoryApi.getAll();
+      setCategories(data || []);
     } catch (error) {
-      console.error('Failed to fetch categories', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch categories. Ensure backend server is running on port 3001.';
+      setError(errorMsg);
+      console.error('[v0] Failed to fetch categories:', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -41,60 +42,30 @@ export default function CategoriesPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: newCategory }),
-      });
-
-      if (response.ok) {
-        setNewCategory('');
-        setShowAddModal(false);
-        fetchCategories();
-        alert('Category added successfully');
-      } else {
-        try {
-          const errorData = await response.json();
-          alert(`Failed to add category: ${errorData.message || `Status ${response.status}`}`);
-        } catch {
-          alert(`Failed to add category: Server returned ${response.status} ${response.statusText}`);
-        }
-      }
+      await categoryApi.create({ name: newCategory });
+      setNewCategory('');
+      setShowAddModal(false);
+      fetchCategories();
+      alert('Category added successfully');
     } catch (error) {
-      console.error('Failed to add category', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to add category'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to add category';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to add category:', errorMsg);
     }
   };
 
   const handleDeleteCategory = async (id: number) => {
     if (!confirm('Are you sure you want to delete this category?')) return;
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        fetchCategories();
-        alert('Category deleted successfully');
-      } else {
-        try {
-          const errorData = await response.json();
-          alert(`Failed to delete category: ${errorData.message || `Status ${response.status}`}`);
-        } catch {
-          alert(`Failed to delete category: Server returned ${response.status} ${response.statusText}`);
-        }
-      }
+      await categoryApi.delete(id);
+      fetchCategories();
+      alert('Category deleted successfully');
     } catch (error) {
-      console.error('Failed to delete category', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete category'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to delete category';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to delete category:', errorMsg);
     }
   };
 
@@ -104,33 +75,16 @@ export default function CategoriesPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/${editingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: editName }),
-      });
-
-      if (response.ok) {
-        setEditingId(null);
-        setEditName('');
-        fetchCategories();
-        alert('Category updated successfully');
-      } else {
-        try {
-          const errorData = await response.json();
-          alert(`Failed to update category: ${errorData.message || `Status ${response.status}`}`);
-        } catch {
-          alert(`Failed to update category: Server returned ${response.status} ${response.statusText}`);
-        }
-      }
+      await categoryApi.update(editingId!, { name: editName });
+      setEditingId(null);
+      setEditName('');
+      fetchCategories();
+      alert('Category updated successfully');
     } catch (error) {
-      console.error('Failed to update category', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to update category'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to update category';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to update category:', errorMsg);
     }
   };
 
@@ -140,6 +94,14 @@ export default function CategoriesPage() {
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Categories</h1>
         <p className="text-sm md:text-base text-gray-500">Manage your menu categories</p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
+          <p className="text-xs mt-2">Make sure the backend server is running: <code className="bg-red-100 px-1 py-0.5 rounded">npm run dev</code></p>
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div>
