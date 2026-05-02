@@ -3,52 +3,40 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { tableApi } from '@/lib/api';
 
 export default function TablesPage() {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchTables();
   }, []);
 
   const fetchTables = async () => {
-    const token = localStorage.getItem('token');
+    setLoading(true);
+    setError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTables(Array.isArray(data) ? data : []);
-      } else {
-        console.error('Failed to fetch tables:', response.status, response.statusText);
-      }
+      const data = await tableApi.getAll();
+      setTables(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error fetching tables:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch tables. Ensure backend server is running on port 3001.';
+      setError(errorMsg);
+      console.error('[v0] Failed to fetch tables:', errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const updateTableStatus = async (tableId: number, status: string) => {
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables/${tableId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (response.ok) {
-        fetchTables();
-      } else {
-        console.error('Failed to update table status:', response.status);
-      }
+      await tableApi.updateStatus(tableId, status);
+      fetchTables();
     } catch (error) {
-      console.error('Error updating table status:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to update table status';
+      setError(errorMsg);
+      console.error('[v0] Failed to update table status:', errorMsg);
     }
   };
 
@@ -65,6 +53,14 @@ export default function TablesPage() {
         <h1 className="text-3xl font-bold text-slate-900">Tables</h1>
         <p className="text-gray-500">Manage restaurant tables</p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
+          <p className="text-xs mt-2">Make sure the backend server is running: <code className="bg-red-100 px-1 py-0.5 rounded">npm run dev</code></p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[

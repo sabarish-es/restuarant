@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { menuApi, categoryApi } from '@/lib/api';
 
 export default function MenuPage() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -29,22 +31,21 @@ export default function MenuPage() {
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
+    setLoading(true);
+    setError('');
 
     try {
-      const [itemsRes, categoriesRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [itemsData, categoriesData] = await Promise.all([
+        menuApi.getAll().catch(() => []),
+        categoryApi.getAll().catch(() => []),
       ]);
 
-      if (itemsRes.ok) setItems(await itemsRes.json());
-      if (categoriesRes.ok) setCategories(await categoriesRes.json());
+      setItems(itemsData || []);
+      setCategories(categoriesData || []);
     } catch (error) {
-      console.error('Failed to fetch data', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch data. Ensure backend server is running on port 3001.';
+      setError(errorMsg);
+      console.error('[v0] Failed to fetch menu data:', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -68,7 +69,6 @@ export default function MenuPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
@@ -80,6 +80,7 @@ export default function MenuPage() {
         formDataToSend.append('image', formData.image);
       }
 
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items`, {
         method: 'POST',
         headers: {
@@ -99,31 +100,23 @@ export default function MenuPage() {
         alert(`Failed to add item: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Failed to add item', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to add item'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to add item';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to add item:', errorMsg);
     }
   };
 
   const handleDeleteItem = async (id: number) => {
     if (!confirm('Are you sure?')) return;
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        fetchData();
-        alert('Item deleted successfully');
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to delete item: ${errorData.message || 'Unknown error'}`);
-      }
+      await menuApi.delete(id);
+      fetchData();
+      alert('Item deleted successfully');
     } catch (error) {
-      console.error('Failed to delete item', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete item'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to delete item';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to delete item:', errorMsg);
     }
   };
 
@@ -145,6 +138,14 @@ export default function MenuPage() {
           Add New Item
         </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
+          <p className="text-xs mt-2">Make sure categories are created first and backend server is running</p>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

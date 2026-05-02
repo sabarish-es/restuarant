@@ -6,10 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { employeeApi } from '@/lib/api';
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -27,16 +29,15 @@ export default function EmployeesPage() {
   }, []);
 
   const fetchEmployees = async () => {
-    const token = localStorage.getItem('token');
+    setLoading(true);
+    setError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setEmployees(await response.json());
-      }
+      const data = await employeeApi.getAll();
+      setEmployees(data || []);
     } catch (error) {
-      console.error('Failed to fetch employees', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch employees. Ensure backend server is running on port 3001.';
+      setError(errorMsg);
+      console.error('[v0] Failed to fetch employees:', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -48,49 +49,30 @@ export default function EmployeesPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        setFormData({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'cashier', phone: '' });
-        setShowAddModal(false);
-        fetchEmployees();
-        alert('Employee added successfully');
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to add employee: ${errorData.message || 'Unknown error'}`);
-      }
+      await employeeApi.create(formData);
+      setFormData({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'cashier', phone: '' });
+      setShowAddModal(false);
+      fetchEmployees();
+      alert('Employee added successfully');
     } catch (error) {
-      console.error('Failed to add employee', error);
-      alert('Error adding employee');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to add employee';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to add employee:', errorMsg);
     }
   };
 
   const handleDeleteEmployee = async (id: number) => {
     if (!confirm('Are you sure you want to delete this employee?')) return;
 
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        fetchEmployees();
-        alert('Employee deleted successfully');
-      }
+      await employeeApi.delete(id);
+      fetchEmployees();
+      alert('Employee deleted successfully');
     } catch (error) {
-      console.error('Failed to delete employee', error);
-      alert('Error deleting employee');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to delete employee';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to delete employee:', errorMsg);
     }
   };
 
@@ -106,6 +88,13 @@ export default function EmployeesPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Employees</h1>
           <p className="text-sm md:text-base text-gray-500">Manage your staff members</p>
         </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded w-full md:w-auto">
+          <p className="font-semibold text-sm">Error</p>
+          <p className="text-xs">{error}</p>
+        </div>
+      )}
         <Button onClick={() => setShowAddModal(true)} className="bg-purple-600 hover:bg-purple-700 w-full md:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Add Employee
