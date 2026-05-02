@@ -1,0 +1,303 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Edit2, Trash2, Plus, Search } from 'lucide-react';
+import { Modal } from '@/components/Modal';
+
+export default function MenuPage() {
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [imagePreview, setImagePreview] = useState('');
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    category_id: '', 
+    price: '', 
+    status: 'active',
+    description: '',
+    image: null as File | null
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const token = localStorage.getItem('token');
+
+    try {
+      const [itemsRes, categoriesRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (itemsRes.ok) setItems(await itemsRes.json());
+      if (categoriesRes.ok) setCategories(await categoriesRes.json());
+    } catch (error) {
+      console.error('Failed to fetch data', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData({ ...formData, image: file });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!formData.name || !formData.category_id || !formData.price) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('category_id', formData.category_id);
+      formDataToSend.append('price', formData.price);
+      formDataToSend.append('status', formData.status);
+      formDataToSend.append('description', formData.description);
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
+        setImagePreview('');
+        setShowAddModal(false);
+        fetchData();
+        alert('Item added successfully');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to add item: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to add item', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to add item'}`);
+    }
+  };
+
+  const handleDeleteItem = async (id: number) => {
+    if (!confirm('Are you sure?')) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        fetchData();
+        alert('Item deleted successfully');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete item: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete item', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete item'}`);
+    }
+  };
+
+  const filteredItems = items.filter((item: any) =>
+    (item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category_name.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (!selectedCategory || item.category_id === parseInt(selectedCategory))
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Menu Management</h1>
+          <p className="text-sm md:text-base text-gray-500">Manage your restaurant menu items</p>
+        </div>
+        <Button onClick={() => setShowAddModal(true)} className="bg-purple-600 hover:bg-purple-700 w-full md:w-auto">
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Item
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg md:text-xl">Search & Filter</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search menu items..."
+                className="pl-10 text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <select
+              className="px-4 py-2 border rounded-lg text-sm md:text-base"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {categories.map((cat: any) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg md:text-xl">Menu Items</CardTitle>
+          <CardDescription className="text-sm">{filteredItems.length} items found</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs md:text-sm">
+              <thead className="border-b bg-gray-50">
+                <tr>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Item</th>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Category</th>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Price</th>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Status</th>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((item: any) => (
+                  <tr key={item.id} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-2 md:px-4 font-medium">{item.name}</td>
+                    <td className="py-3 px-2 md:px-4 text-gray-600">{item.category_name}</td>
+                    <td className="py-3 px-2 md:px-4 font-semibold">₹{item.price}</td>
+                    <td className="py-3 px-2 md:px-4">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${item.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 md:px-4 flex gap-1 md:gap-2">
+                      <Button variant="outline" size="sm">
+                        <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDeleteItem(item.id)}>
+                        <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Menu Item">
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div>
+            <label className="block text-sm font-medium mb-2">Item Name</label>
+            <Input
+              placeholder="Enter item name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Category</label>
+            <select
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={formData.category_id}
+              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+            >
+              <option value="">Select Category</option>
+              {categories.map((cat: any) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <Input
+              placeholder="Enter item description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Price (₹)</label>
+            <Input
+              type="number"
+              placeholder="Enter price"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Item Image</label>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="text-sm"
+            />
+            {imagePreview && (
+              <div className="mt-2">
+                <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded" />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Status</label>
+            <select
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div className="flex gap-2 pt-4">
+            <Button onClick={handleAddItem} className="flex-1 bg-purple-600 hover:bg-purple-700">
+              Add Item
+            </Button>
+            <Button onClick={() => { setShowAddModal(false); setImagePreview(''); }} variant="outline" className="flex-1">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
