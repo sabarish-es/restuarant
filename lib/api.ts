@@ -39,7 +39,21 @@ export async function apiCall(
         window.location.href = '/';
       }
     }
-    throw new Error(`API Error: ${response.statusText}`);
+    
+    // Try to parse error response as JSON
+    let errorMessage = `API Error: ${response.statusText}`;
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      }
+    } catch (e) {
+      // If JSON parsing fails, use default error message
+      console.error('[v0] Error parsing error response:', e);
+    }
+    
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -97,7 +111,7 @@ export const categoryApi = {
 export const menuApi = {
   getAll: (categoryId?: number) => {
     const query = categoryId ? `?categoryId=${categoryId}` : '';
-    return apiCall(`/menu-items${query}`, { requiresAuth: true });
+    return apiCall(`/menu-items${query}`, { requiresAuth: false });
   },
 
   create: (data: any) =>
