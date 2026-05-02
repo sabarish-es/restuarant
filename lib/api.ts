@@ -186,6 +186,12 @@ export const employeeApi = {
       body: JSON.stringify(data),
       requiresAuth: true,
     }),
+
+  delete: (id: number) =>
+    apiCall(`/employees/${id}`, {
+      method: 'DELETE',
+      requiresAuth: true,
+    }),
 };
 
 // Settings APIs
