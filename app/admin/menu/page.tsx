@@ -70,35 +70,19 @@ export default function MenuPage() {
     }
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('category_id', formData.category_id);
-      formDataToSend.append('price', formData.price);
-      formDataToSend.append('status', formData.status);
-      formDataToSend.append('description', formData.description);
-      if (formData.image) {
-        formDataToSend.append('image', formData.image);
-      }
+      const itemData = {
+        name: formData.name,
+        categoryId: formData.category_id, // Convert to camelCase for backend
+        price: parseFloat(formData.price),
+        description: formData.description || null,
+      };
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-items`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formDataToSend,
-      });
-
-      if (response.ok) {
-        setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
-        setImagePreview('');
-        setShowAddModal(false);
-        fetchData();
-        alert('Item added successfully');
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to add item: ${errorData.message || 'Unknown error'}`);
-      }
+      await menuApi.create(itemData);
+      setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
+      setImagePreview('');
+      setShowAddModal(false);
+      await fetchData();
+      alert('Item added successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to add item';
       alert(`Error: ${errorMsg}`);
