@@ -328,23 +328,27 @@ exports.getEmployeeActivities = async (req, res) => {
     const connection = await pool.getConnection();
 
     const [employees] = await connection.execute(`
-      SELECT u.id, u.username, u.email, u.role, e.first_name, e.last_name, e.hire_date,
-             COUNT(o.id) as total_orders,
-             SUM(o.total) as total_sales,
-             COUNT(CASE WHEN DATE(o.created_at) = CURDATE() THEN 1 END) as today_orders,
-             SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN o.total ELSE 0 END) as today_sales,
+      SELECT u.id, u.username, u.email, u.role, 
+             COALESCE(e.first_name, 'N/A') as first_name, 
+             COALESCE(e.last_name, 'N/A') as last_name, 
+             COALESCE(e.hire_date, NOW()) as hire_date,
+             COALESCE(COUNT(o.id), 0) as total_orders,
+             COALESCE(SUM(o.total), 0) as total_sales,
+             COALESCE(COUNT(CASE WHEN DATE(o.created_at) = CURDATE() THEN 1 END), 0) as today_orders,
+             COALESCE(SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN o.total ELSE 0 END), 0) as today_sales,
              MAX(o.created_at) as last_order_at
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
       LEFT JOIN orders o ON u.id = o.cashier_id
-      WHERE u.role IN ('cashier', 'kitchen')
-      GROUP BY u.id, u.username, u.email, u.role, e.first_name, e.last_name, e.hire_date
-      ORDER BY e.first_name
+      WHERE u.role IN ('cashier', 'kitchen', 'admin')
+      GROUP BY u.id
+      ORDER BY COALESCE(e.first_name, u.username)
     `);
 
     connection.release();
-    res.json(employees);
+    res.json(employees || []);
   } catch (error) {
+    console.error('[v0] Employee activities error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

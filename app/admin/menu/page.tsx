@@ -70,12 +70,17 @@ export default function MenuPage() {
     }
 
     try {
-      const itemData = {
+      const itemData: any = {
         name: formData.name,
-        categoryId: formData.category_id, // Convert to camelCase for backend
+        categoryId: parseInt(formData.category_id),
         price: parseFloat(formData.price),
         description: formData.description || null,
       };
+
+      // Add image URL if image is provided
+      if (imagePreview) {
+        itemData.imageUrl = imagePreview;
+      }
 
       await menuApi.create(itemData);
       setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
@@ -172,6 +177,7 @@ export default function MenuPage() {
             <table className="w-full text-xs md:text-sm">
               <thead className="border-b bg-gray-50">
                 <tr>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Image</th>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Item</th>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Category</th>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Price</th>
@@ -182,6 +188,13 @@ export default function MenuPage() {
               <tbody>
                 {filteredItems.map((item: any) => (
                   <tr key={item.id} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-2 md:px-4">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">🍽️</div>
+                      )}
+                    </td>
                     <td className="py-3 px-2 md:px-4 font-medium">{item.name}</td>
                     <td className="py-3 px-2 md:px-4 text-gray-600">{item.category_name}</td>
                     <td className="py-3 px-2 md:px-4 font-semibold">₹{item.price}</td>
