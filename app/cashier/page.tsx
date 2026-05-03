@@ -148,20 +148,24 @@ export default function CashierPage() {
           >
             All
           </Button>
-          {categories.map((cat) => (
-            <Button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              variant={selectedCategory === cat.id ? 'default' : 'ghost'}
-              className={`w-full justify-start mb-2 ${
-                selectedCategory === cat.id
-                  ? 'bg-emerald-500'
-                  : 'text-emerald-100 hover:text-white'
-              }`}
-            >
-              {cat.name}
-            </Button>
-          ))}
+          {categories.length > 0 ? (
+            categories.map((cat) => (
+              <Button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                variant={selectedCategory === cat.id ? 'default' : 'ghost'}
+                className={`w-full justify-start mb-2 ${
+                  selectedCategory === cat.id
+                    ? 'bg-emerald-500'
+                    : 'text-emerald-100 hover:text-white'
+                }`}
+              >
+                {cat.name}
+              </Button>
+            ))
+          ) : (
+            <p className="text-emerald-100 text-xs p-2">Loading categories...</p>
+          )}
         </div>
 
         <div className="p-3 border-t border-emerald-700">

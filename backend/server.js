@@ -50,10 +50,10 @@ app.delete('/api/customers/:id', authMiddleware, roleMiddleware(['admin']), mast
 
 // Employees Routes
 app.get('/api/employees', authMiddleware, roleMiddleware(['admin']), masterController.getEmployees);
-app.post('/api/employees', authMiddleware, roleMiddleware(['admin']), masterController.createEmployee);
-app.delete('/api/employees/:id', authMiddleware, roleMiddleware(['admin']), masterController.deleteEmployee);
 app.get('/api/employees/activities', authMiddleware, roleMiddleware(['admin']), masterController.getEmployeeActivities);
 app.get('/api/employees/:id/details', authMiddleware, roleMiddleware(['admin']), masterController.getEmployeeDetails);
+app.post('/api/employees', authMiddleware, roleMiddleware(['admin']), masterController.createEmployee);
+app.delete('/api/employees/:id', authMiddleware, roleMiddleware(['admin']), masterController.deleteEmployee);
 
 // Settings Routes
 app.get('/api/settings', authMiddleware, masterController.getSettings);
