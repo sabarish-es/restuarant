@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Clock, LogOut, Trash2, ShoppingCart } from 'lucide-react';
+import { Menu, Clock, LogOut, Trash2, ShoppingCart, Printer, Save, X } from 'lucide-react';
 
 export default function CashierPage() {
   const router = useRouter();
@@ -14,9 +14,16 @@ export default function CashierPage() {
   const [currentOrder, setCurrentOrder] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [heldOrders, setHeldOrders] = useState<any[]>([]);
+  const [showHeldOrders, setShowHeldOrders] = useState(false);
+  const [checkoutMode, setCheckoutMode] = useState(false);
 
   useEffect(() => {
     fetchCategories();
+    // Update time every second
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -196,7 +203,7 @@ export default function CashierPage() {
           </div>
           <div className="flex items-center gap-2 text-gray-600">
             <Clock className="w-4 h-4" />
-            <span className="text-sm">{new Date().toLocaleTimeString()}</span>
+            <span className="text-sm">{currentTime.toLocaleTimeString()}</span>
           </div>
         </header>
 
@@ -220,8 +227,12 @@ export default function CashierPage() {
                   onClick={() => addToOrder(item)}
                   className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden"
                 >
-                  <div className="aspect-square bg-gray-200 flex items-center justify-center text-4xl">
-                    🍽️
+                  <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span>🍽️</span>
+                    )}
                   </div>
                   <div className="p-3">
                     <h3 className="font-semibold text-sm truncate">{item.name}</h3>
@@ -299,22 +310,93 @@ export default function CashierPage() {
                 <span className="text-emerald-600">₹{total.toFixed(2)}</span>
               </div>
 
-              <div className="space-y-2">
-                <Button
-                  onClick={() => setCurrentOrder([])}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Hold Order
-                </Button>
-                <Button
-                  onClick={handleCheckout}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  Checkout →
-                </Button>
-              </div>
+              {checkoutMode ? (
+                <div className="space-y-2">
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded">
+                    <p className="text-xs font-semibold text-blue-900">Ready to Checkout?</p>
+                    <p className="text-xs text-blue-800 mt-1">Total: ₹{total.toFixed(2)}</p>
+                  </div>
+                  <Button
+                    onClick={handleCheckout}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Confirm & Print Bill
+                  </Button>
+                  <Button
+                    onClick={() => setCheckoutMode(false)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => {
+                      if (currentOrder.length > 0) {
+                        setHeldOrders([...heldOrders, { id: Date.now(), items: currentOrder, total, tax, subtotal }]);
+                        setCurrentOrder([]);
+                        alert('Order held successfully!');
+                      }
+                    }}
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Hold Order
+                  </Button>
+                  {heldOrders.length > 0 && (
+                    <Button
+                      onClick={() => setShowHeldOrders(!showHeldOrders)}
+                      variant="outline"
+                      className="w-full text-blue-600"
+                    >
+                      Held Orders ({heldOrders.length})
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setCheckoutMode(true)}
+                    disabled={currentOrder.length === 0}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                  >
+                    Proceed to Checkout
+                  </Button>
+                </div>
+              )}
             </div>
+
+            {showHeldOrders && (
+              <div className="border-t pt-4 mt-4 space-y-2">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-sm">Held Orders</h3>
+                  <Button size="sm" variant="ghost" onClick={() => setShowHeldOrders(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                {heldOrders.map((order) => (
+                  <div key={order.id} className="bg-gray-100 p-2 rounded border text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Order #{order.id}</span>
+                      <span className="text-emerald-600">₹{order.total.toFixed(2)}</span>
+                    </div>
+                    <p className="text-gray-600">{order.items.length} items</p>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setCurrentOrder(order.items);
+                        setHeldOrders(heldOrders.filter((o) => o.id !== order.id));
+                        setShowHeldOrders(false);
+                      }}
+                      className="w-full text-xs bg-blue-600 hover:bg-blue-700"
+                    >
+                      Resume Order
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

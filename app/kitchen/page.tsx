@@ -9,11 +9,19 @@ export default function KitchenPage() {
   const router = useRouter();
   const [orders, setOrders] = useState({ new: [], preparing: [], ready: [], completed: [] });
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
+    const orderInterval = setInterval(fetchOrders, 5000); // Refresh orders every 5 seconds
+    
+    // Update clock every second
+    const clockInterval = setInterval(() => setCurrentTime(new Date()), 1000);
+    
+    return () => {
+      clearInterval(orderInterval);
+      clearInterval(clockInterval);
+    };
   }, []);
 
   const fetchOrders = async () => {
@@ -135,7 +143,7 @@ export default function KitchenPage() {
     <div className="flex-1 flex flex-col bg-gray-800 rounded-lg overflow-hidden">
       <div className={`${color} p-4 text-white font-bold flex items-center justify-between`}>
         <span>{title}</span>
-        <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">{count}</span>
+        <span className="bg-white text-gray-900 font-bold px-3 py-1 rounded-full text-lg min-w-[40px] text-center">{count}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {columnOrders.length === 0 ? (
@@ -160,7 +168,7 @@ export default function KitchenPage() {
             <Volume2 className="w-4 h-4 mr-2" />
             Sound Alert
           </Button>
-          <span className="text-sm text-gray-400">{new Date().toLocaleTimeString()}</span>
+          <span className="text-sm text-gray-400">{currentTime.toLocaleTimeString()}</span>
           <Button
             onClick={handleLogout}
             variant="outline"
