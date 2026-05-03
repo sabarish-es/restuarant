@@ -16,6 +16,7 @@ import {
   Table2,
   BarChart3,
   Settings,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
   { href: '/admin/customers', icon: Users, label: 'Customers' },
   { href: '/admin/employees', icon: Briefcase, label: 'Employees' },
+  { href: '/admin/activities', icon: Activity, label: 'Employee Activities' },
   { href: '/admin/tables', icon: Table2, label: 'Tables' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
