@@ -206,6 +206,12 @@ export const employeeApi = {
       method: 'DELETE',
       requiresAuth: true,
     }),
+
+  getActivities: () =>
+    apiCall('/employees/activities', { requiresAuth: true }),
+
+  getDetails: (id: number) =>
+    apiCall(`/employees/${id}/details`, { requiresAuth: true }),
 };
 
 // Settings APIs

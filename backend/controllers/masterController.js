@@ -321,3 +321,69 @@ exports.getReports = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+// Employee Activities & Statistics
+exports.getEmployeeActivities = async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+
+    const [employees] = await connection.execute(`
+      SELECT u.id, u.username, u.email, u.role, e.first_name, e.last_name, e.hire_date,
+             COUNT(o.id) as total_orders,
+             SUM(o.total) as total_sales,
+             COUNT(CASE WHEN DATE(o.created_at) = CURDATE() THEN 1 END) as today_orders,
+             SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN o.total ELSE 0 END) as today_sales,
+             MAX(o.created_at) as last_order_at
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
+      LEFT JOIN orders o ON u.id = o.cashier_id
+      WHERE u.role IN ('cashier', 'kitchen')
+      GROUP BY u.id, u.username, u.email, u.role, e.first_name, e.last_name, e.hire_date
+      ORDER BY e.first_name
+    `);
+
+    connection.release();
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.getEmployeeDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const connection = await pool.getConnection();
+
+    // Get employee info
+    const [employees] = await connection.execute(`
+      SELECT u.id, u.username, u.email, u.role, e.first_name, e.last_name, e.phone, e.hire_date
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE u.id = ?
+    `, [id]);
+
+    if (employees.length === 0) {
+      connection.release();
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Get employee's orders
+    const [orders] = await connection.execute(`
+      SELECT o.id, o.order_number, o.total, o.status, o.created_at, o.completed_at, c.name as customer_name
+      FROM orders o
+      LEFT JOIN customers c ON o.customer_id = c.id
+      WHERE o.cashier_id = ?
+      ORDER BY o.created_at DESC
+      LIMIT 50
+    `, [id]);
+
+    connection.release();
+
+    res.json({
+      employee: employees[0],
+      orders,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

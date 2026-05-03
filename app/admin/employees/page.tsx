@@ -141,8 +141,10 @@ export default function EmployeesPage() {
               <thead className="border-b bg-gray-50">
                 <tr>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Employee</th>
+                  <th className="text-left py-3 px-2 md:px-4 font-semibold">Username</th>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Role</th>
                   <th className="hidden md:table-cell text-left py-3 px-2 md:px-4 font-semibold">Phone</th>
+                  <th className="hidden md:table-cell text-left py-3 px-2 md:px-4 font-semibold">Email</th>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Status</th>
                   <th className="text-left py-3 px-2 md:px-4 font-semibold">Actions</th>
                 </tr>
@@ -160,8 +162,10 @@ export default function EmployeesPage() {
                   filteredEmployees.map((employee: any) => (
                     <tr key={employee.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-2 md:px-4 font-medium">{employee.first_name} {employee.last_name}</td>
+                      <td className="py-3 px-2 md:px-4 text-gray-600 text-xs md:text-sm">{employee.username}</td>
                       <td className="py-3 px-2 md:px-4 text-gray-600">{employee.role}</td>
                       <td className="hidden md:table-cell py-3 px-2 md:px-4">{employee.phone || '-'}</td>
+                      <td className="hidden md:table-cell py-3 px-2 md:px-4 text-xs">{employee.email || '-'}</td>
                       <td className="py-3 px-2 md:px-4">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${employee.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                           {employee.status || 'active'}
@@ -186,10 +190,15 @@ export default function EmployeesPage() {
 
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Employee">
         <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="bg-blue-50 border border-blue-200 p-3 rounded">
+            <p className="text-xs font-semibold text-blue-900 mb-2">Login Credentials</p>
+            <p className="text-xs text-blue-800">Username and password will be used for employee login</p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-2">Username</label>
             <Input
-              placeholder="Enter username"
+              placeholder="Enter username (will be used for login)"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
             />
@@ -198,7 +207,7 @@ export default function EmployeesPage() {
             <label className="block text-sm font-medium mb-2">Email</label>
             <Input
               type="email"
-              placeholder="Enter email"
+              placeholder="Enter email address"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
@@ -207,10 +216,11 @@ export default function EmployeesPage() {
             <label className="block text-sm font-medium mb-2">Password</label>
             <Input
               type="password"
-              placeholder="Enter password"
+              placeholder="Enter password (will be used for login)"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
+            <p className="text-xs text-gray-500 mt-1">Make sure the username and password are secure and unique</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
