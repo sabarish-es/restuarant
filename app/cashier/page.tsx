@@ -62,10 +62,12 @@ export default function CashierPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.ok) {
-        setItems(await response.json());
+        const data = await response.json();
+        console.log('[v0] Fetched menu items:', data);
+        setItems(data);
       }
     } catch (error) {
-      console.error('Failed to fetch all items', error);
+      console.error('[v0] Failed to fetch all items', error);
     }
   };
 
@@ -95,10 +97,14 @@ export default function CashierPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.ok) {
-        setItems(await response.json());
+        const data = await response.json();
+        console.log('[v0] Fetched items for category', categoryId, ':', data);
+        setItems(data);
+      } else {
+        console.error('[v0] Failed to fetch items, status:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch items', error);
+      console.error('[v0] Failed to fetch items', error);
     }
   };
 
@@ -141,26 +147,46 @@ export default function CashierPage() {
   );
 
   const handleCheckout = async () => {
+    console.log('[v0] Checkout started', { currentOrder, selectedTable, paymentMethod });
+    
     if (currentOrder.length === 0) {
       alert('Please add items to the order');
       return;
     }
 
     const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Authentication required. Please login again.');
+      return;
+    }
+
     try {
+      const orderPayload = {
+        items: currentOrder.map(item => ({
+          menuItemId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        tableId: selectedTable?.id || null,
+        orderType: selectedTable ? 'dine-in' : 'takeaway',
+        paymentMethod: paymentMethod,
+      };
+
+      console.log('[v0] Sending order payload:', orderPayload);
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          items: currentOrder,
-          tableId: selectedTable?.id || null,
-          orderType: selectedTable ? 'dine-in' : 'takeaway',
-          paymentMethod: paymentMethod,
-        }),
+        body: JSON.stringify(orderPayload),
       });
+
+      console.log('[v0] Response status:', response.status);
+      const responseData = await response.json();
+      console.log('[v0] Response data:', responseData);
 
       if (response.ok) {
         alert(`Order created successfully! (Paid via ${paymentMethod.toUpperCase()})`);
@@ -169,10 +195,12 @@ export default function CashierPage() {
         setShowTableModal(true);
         setCheckoutMode(false);
         setPaymentMethod('cash');
+      } else {
+        alert(`Failed to create order: ${responseData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Failed to create order', error);
-      alert('Failed to create order');
+      console.error('[v0] Failed to create order:', error);
+      alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -299,7 +327,7 @@ export default function CashierPage() {
 
         <div className="flex-1 flex gap-4 p-6 overflow-hidden">
           {/* Menu Items Section */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-w-0">
             <div className="mb-4">
               <input
                 type="text"
@@ -310,14 +338,14 @@ export default function CashierPage() {
               />
             </div>
 
-            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-4">
+            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pb-4 auto-rows-max">
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => addToOrder(item)}
-                  className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden"
+                  className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden w-full h-40"
                 >
-                  <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden">
+                  <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden">
                     {item.image_url ? (
                       <img 
                         src={`${process.env.NEXT_PUBLIC_API_URL}${item.image_url}`} 
@@ -329,7 +357,7 @@ export default function CashierPage() {
                           if (e.currentTarget.parentElement) {
                             const span = document.createElement('span');
                             span.textContent = '🍽️';
-                            e.currentTarget.parentElement.appendChild(span);
+                            e.currentTarget.parentElement.style.display = 'flex';
                           }
                         }}
                       />
@@ -337,9 +365,9 @@ export default function CashierPage() {
                       <span>🍽️</span>
                     )}
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-semibold text-sm truncate">{item.name}</h3>
-                    <p className="text-emerald-600 font-bold">₹{item.price}</p>
+                  <div className="p-2">
+                    <h3 className="font-semibold text-xs truncate">{item.name}</h3>
+                    <p className="text-emerald-600 font-bold text-sm">₹{item.price}</p>
                   </div>
                 </div>
               ))}
