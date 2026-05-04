@@ -163,14 +163,11 @@ export default function CashierPage() {
     try {
       const orderPayload = {
         items: currentOrder.map(item => ({
-          menuItemId: item.id,
-          name: item.name,
-          price: item.price,
+          menuItemId: item.menuItemId,
           quantity: item.quantity
         })),
         tableId: selectedTable?.id || null,
         orderType: selectedTable ? 'dine-in' : 'takeaway',
-        paymentMethod: paymentMethod,
       };
 
       console.log('[v0] Sending order payload:', orderPayload);
@@ -189,7 +186,7 @@ export default function CashierPage() {
       console.log('[v0] Response data:', responseData);
 
       if (response.ok) {
-        alert(`Order created successfully! (Paid via ${paymentMethod.toUpperCase()})`);
+        alert(`Order created successfully! Order #${responseData.order?.orderNumber || 'N/A'}`);
         setCurrentOrder([]);
         setSelectedTable(null);
         setShowTableModal(true);
@@ -197,9 +194,8 @@ export default function CashierPage() {
         setPaymentMethod('cash');
       } else {
         const errorMsg = responseData.message || 'Unknown error';
-        const userRole = responseData.userRole ? ` (Your role: ${responseData.userRole})` : '';
-        alert(`Failed to create order: ${errorMsg}${userRole}`);
-        console.error('[v0] API Error:', responseData);
+        alert(`Failed to create order: ${errorMsg}`);
+        console.error('[v0] API Error:', { status: response.status, data: responseData });
       }
     } catch (error) {
       console.error('[v0] Failed to create order:', error);
