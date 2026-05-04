@@ -27,10 +27,28 @@ export default function CashierPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedCategory) {
+    if (selectedCategory === null) {
+      // Fetch all items when "All" is selected
+      fetchAllItems();
+    } else if (selectedCategory) {
       fetchItems(selectedCategory);
     }
   }, [selectedCategory]);
+
+  const fetchAllItems = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/menu-items`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.ok) {
+        setItems(await response.json());
+      }
+    } catch (error) {
+      console.error('Failed to fetch all items', error);
+    }
+  };
 
   const fetchCategories = async () => {
     const token = localStorage.getItem('token');
