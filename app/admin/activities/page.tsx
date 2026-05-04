@@ -64,7 +64,9 @@ export default function EmployeeActivitiesPage() {
     setLoading(true);
     setError('');
     try {
+      console.log('[v0] Fetching employee activities...');
       const data = await employeeApi.getActivities();
+      console.log('[v0] Employee activities fetched:', data);
       setEmployees(data || []);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to fetch employee activities';
