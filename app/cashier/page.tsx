@@ -164,7 +164,8 @@ export default function CashierPage() {
       const orderPayload = {
         items: currentOrder.map(item => ({
           menuItemId: item.menuItemId,
-          quantity: item.quantity
+          quantity: item.quantity,
+          price: item.price
         })),
         tableId: selectedTable?.id || null,
         orderType: selectedTable ? 'dine-in' : 'takeaway',
