@@ -18,13 +18,32 @@ export default function CashierPage() {
   const [heldOrders, setHeldOrders] = useState<any[]>([]);
   const [showHeldOrders, setShowHeldOrders] = useState(false);
   const [checkoutMode, setCheckoutMode] = useState(false);
+  const [tables, setTables] = useState<any[]>([]);
+  const [selectedTable, setSelectedTable] = useState<any>(null);
+  const [showTableModal, setShowTableModal] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
 
   useEffect(() => {
     fetchCategories();
+    fetchTables();
     // Update time every second
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const fetchTables = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        setTables(await response.json());
+      }
+    } catch (error) {
+      console.error('Failed to fetch tables', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedCategory === null) {
@@ -137,16 +156,23 @@ export default function CashierPage() {
         },
         body: JSON.stringify({
           items: currentOrder,
-          orderType: 'dine-in',
+          tableId: selectedTable?.id || null,
+          orderType: selectedTable ? 'dine-in' : 'takeaway',
+          paymentMethod: paymentMethod,
         }),
       });
 
       if (response.ok) {
-        alert('Order created successfully!');
+        alert(`Order created successfully! (Paid via ${paymentMethod.toUpperCase()})`);
         setCurrentOrder([]);
+        setSelectedTable(null);
+        setShowTableModal(true);
+        setCheckoutMode(false);
+        setPaymentMethod('cash');
       }
     } catch (error) {
       console.error('Failed to create order', error);
+      alert('Failed to create order');
     }
   };
 
@@ -155,6 +181,52 @@ export default function CashierPage() {
     localStorage.removeItem('user');
     router.push('/');
   };
+
+  // Table Selection Modal
+  if (showTableModal && !selectedTable) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">Select Table or Order Type</h2>
+          <p className="text-gray-600 mb-8">Choose a table for dine-in or proceed with takeaway</p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {tables.map((table) => (
+              <button
+                key={table.id}
+                onClick={() => {
+                  setSelectedTable(table);
+                  setShowTableModal(false);
+                }}
+                className={`p-6 rounded-lg border-2 transition font-semibold ${
+                  table.status === 'available'
+                    ? 'border-emerald-600 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 cursor-pointer'
+                    : 'border-red-600 bg-red-50 text-red-900 cursor-not-allowed opacity-50'
+                }`}
+                disabled={table.status !== 'available'}
+              >
+                <div className="text-2xl mb-2">🪑</div>
+                <div className="text-sm">Table {table.table_number}</div>
+                <div className="text-xs text-gray-600 capitalize">{table.status}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="border-t pt-6">
+            <button
+              onClick={() => {
+                setSelectedTable({ id: null, table_number: 'Takeaway' });
+                setShowTableModal(false);
+              }}
+              className="w-full p-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition"
+            >
+              Takeaway Order
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
@@ -246,15 +318,19 @@ export default function CashierPage() {
                   className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden"
                 >
                   <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden">
-                    {item.image ? (
+                    {item.image_url ? (
                       <img 
-                        src={`${process.env.NEXT_PUBLIC_API_URL}${item.image}`} 
+                        src={`${process.env.NEXT_PUBLIC_API_URL}${item.image_url}`} 
                         alt={item.name} 
                         className="w-full h-full object-cover" 
                         onError={(e) => {
-                          console.log('[v0] Image load error for:', item.image);
+                          console.log('[v0] Image load error for:', item.image_url);
                           e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement?.querySelector('span')?.classList.remove('hidden');
+                          if (e.currentTarget.parentElement) {
+                            const span = document.createElement('span');
+                            span.textContent = '🍽️';
+                            e.currentTarget.parentElement.appendChild(span);
+                          }
                         }}
                       />
                     ) : (
@@ -277,6 +353,22 @@ export default function CashierPage() {
                 <ShoppingCart className="w-5 h-5 text-emerald-600" />
                 <h2 className="font-bold text-lg">Current Order</h2>
               </div>
+              {selectedTable && (
+                <div className="mt-3 p-2 bg-white rounded border border-emerald-200">
+                  <p className="text-xs text-gray-600">Table</p>
+                  <p className="font-semibold text-emerald-700">{selectedTable.table_number}</p>
+                  <button
+                    onClick={() => {
+                      setSelectedTable(null);
+                      setCurrentOrder([]);
+                      setShowTableModal(true);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 mt-2 underline"
+                  >
+                    Change Table
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -338,11 +430,31 @@ export default function CashierPage() {
               </div>
 
               {checkoutMode ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="bg-blue-50 border border-blue-200 p-3 rounded">
                     <p className="text-xs font-semibold text-blue-900">Ready to Checkout?</p>
                     <p className="text-xs text-blue-800 mt-1">Total: ₹{total.toFixed(2)}</p>
                   </div>
+
+                  <div>
+                    <label className="text-xs font-semibold mb-2 block">Payment Method</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['cash', 'card', 'upi'].map((method) => (
+                        <button
+                          key={method}
+                          onClick={() => setPaymentMethod(method as any)}
+                          className={`p-2 rounded text-xs font-semibold transition ${
+                            paymentMethod === method
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                          }`}
+                        >
+                          {method === 'cash' ? '💵 Cash' : method === 'card' ? '💳 Card' : '📱 UPI'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <Button
                     onClick={handleCheckout}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
