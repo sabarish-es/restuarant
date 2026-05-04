@@ -220,13 +220,63 @@ exports.updateMenuItem = async (req, res) => {
 };
 
 exports.deleteMenuItem = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
-    const connection = await pool.getConnection();
-    await connection.execute('DELETE FROM menu_items WHERE id = ?', [id]);
+    
+    if (!id) {
+      return res.status(400).json({ message: 'Menu item ID is required' });
+    }
+    
+    connection = await pool.getConnection();
+    
+    // Check if menu item exists
+    const [existingItem] = await connection.execute(
+      'SELECT id, image_url FROM menu_items WHERE id = ?',
+      [id]
+    );
+    
+    if (!existingItem || existingItem.length === 0) {
+      connection.release();
+      return res.status(404).json({ message: 'Menu item not found' });
+    }
+    
+    // Delete the menu item (this will also cascade delete related order items due to foreign key)
+    const deleteResult = await connection.execute(
+      'DELETE FROM menu_items WHERE id = ?',
+      [id]
+    );
+    
     connection.release();
-    res.json({ message: 'Menu item deleted' });
+    
+    if (deleteResult[0].affectedRows === 0) {
+      return res.status(400).json({ message: 'Failed to delete menu item' });
+    }
+    
+    // Delete associated image file if it exists
+    if (existingItem[0].image_url && existingItem[0].image_url.startsWith('/uploads')) {
+      try {
+        const imagePath = path.join(__dirname, '../public', existingItem[0].image_url);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+          console.log('[v0] Deleted menu item image:', imagePath);
+        }
+      } catch (imageError) {
+        console.error('[v0] Error deleting image file:', imageError.message);
+        // Don't fail the delete operation if image deletion fails
+      }
+    }
+    
+    res.json({ message: 'Menu item deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error deleting menu item:', error.message);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete menu item' });
   }
 };

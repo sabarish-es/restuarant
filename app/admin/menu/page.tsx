@@ -96,16 +96,16 @@ export default function MenuPage() {
   };
 
   const handleDeleteItem = async (id: number) => {
-    if (!confirm('Are you sure?')) return;
+    if (!confirm('Are you sure you want to delete this menu item?')) return;
 
     try {
       await menuApi.delete(id);
-      fetchData();
+      await fetchData();
       alert('Item deleted successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to delete item';
       alert(`Error: ${errorMsg}`);
-      console.error('[v0] Failed to delete item:', errorMsg);
+      console.error('[v0] Failed to delete item:', { id, error: errorMsg });
     }
   };
 
