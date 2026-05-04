@@ -241,7 +241,13 @@ exports.deleteMenuItem = async (req, res) => {
       return res.status(404).json({ message: 'Menu item not found' });
     }
     
-    // Delete the menu item (this will also cascade delete related order items due to foreign key)
+    // First, delete all related order items that reference this menu item
+    await connection.execute(
+      'DELETE FROM order_items WHERE menu_item_id = ?',
+      [id]
+    );
+    
+    // Then delete the menu item
     const deleteResult = await connection.execute(
       'DELETE FROM menu_items WHERE id = ?',
       [id]
