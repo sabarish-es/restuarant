@@ -1,4 +1,12 @@
 const pool = require('../config/db');
+const fs = require('fs');
+const path = require('path');
+
+// Ensure upload directories exist
+const uploadsDir = path.join(__dirname, '../public/uploads/menu-items');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Category Operations
 exports.getCategories = async (req, res) => {
@@ -89,37 +97,125 @@ exports.getMenuItems = async (req, res) => {
 };
 
 exports.createMenuItem = async (req, res) => {
+  let connection = null;
   try {
     const { name, categoryId, price, description, imageUrl } = req.body;
 
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+    
+    let savedImageUrl = null;
+    
+    // Handle base64 image data
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      try {
+        const matches = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+          const imageType = matches[1];
+          const imageData = matches[2];
+          const buffer = Buffer.from(imageData, 'base64');
+          
+          // Generate unique filename
+          const timestamp = Date.now();
+          const filename = `menu-item-${timestamp}.${imageType}`;
+          const filepath = path.join(uploadsDir, filename);
+          
+          // Save file to disk
+          fs.writeFileSync(filepath, buffer);
+          
+          // Store relative path in database
+          savedImageUrl = `/uploads/menu-items/${filename}`;
+          console.log('[v0] Image saved to:', savedImageUrl);
+        }
+      } catch (imageError) {
+        console.error('[v0] Error processing image:', imageError.message);
+        // Continue without image if there's an error
+      }
+    }
+    
     const [result] = await connection.execute(
       'INSERT INTO menu_items (name, category_id, price, description, image_url) VALUES (?, ?, ?, ?, ?)',
-      [name, categoryId, price, description || null, imageUrl || null]
+      [name, categoryId, price, description || null, savedImageUrl]
     );
     connection.release();
 
-    res.status(201).json({ id: result.insertId, name, categoryId, price });
+    res.status(201).json({ id: result.insertId, name, categoryId, price, image_url: savedImageUrl });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error creating menu item:', error.message);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to create menu item' });
   }
 };
 
 exports.updateMenuItem = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
     const { name, categoryId, price, description, imageUrl, status } = req.body;
 
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+    
+    let savedImageUrl = imageUrl;
+    
+    // Handle base64 image data for updates
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      try {
+        // Get current item to delete old image if exists
+        const [currentItem] = await connection.execute(
+          'SELECT image_url FROM menu_items WHERE id = ?',
+          [id]
+        );
+        
+        if (currentItem.length > 0 && currentItem[0].image_url && currentItem[0].image_url.startsWith('/uploads')) {
+          const oldImagePath = path.join(__dirname, '../public', currentItem[0].image_url);
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+            console.log('[v0] Deleted old image:', oldImagePath);
+          }
+        }
+        
+        // Save new image
+        const matches = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+          const imageType = matches[1];
+          const imageData = matches[2];
+          const buffer = Buffer.from(imageData, 'base64');
+          
+          const timestamp = Date.now();
+          const filename = `menu-item-${timestamp}.${imageType}`;
+          const filepath = path.join(uploadsDir, filename);
+          
+          fs.writeFileSync(filepath, buffer);
+          savedImageUrl = `/uploads/menu-items/${filename}`;
+          console.log('[v0] Image updated to:', savedImageUrl);
+        }
+      } catch (imageError) {
+        console.error('[v0] Error processing image update:', imageError.message);
+      }
+    }
+    
     await connection.execute(
       'UPDATE menu_items SET name = ?, category_id = ?, price = ?, description = ?, image_url = ?, status = ? WHERE id = ?',
-      [name, categoryId, price, description, imageUrl, status, id]
+      [name, categoryId, price, description, savedImageUrl, status, id]
     );
     connection.release();
 
-    res.json({ message: 'Menu item updated' });
+    res.json({ message: 'Menu item updated', image_url: savedImageUrl });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error updating menu item:', error.message);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to update menu item' });
   }
 };
 

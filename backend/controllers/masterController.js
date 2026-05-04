@@ -324,8 +324,9 @@ exports.getReports = async (req, res) => {
 
 // Employee Activities & Statistics
 exports.getEmployeeActivities = async (req, res) => {
+  let connection = null;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
     const [employees] = await connection.execute(`
       SELECT u.id, u.username, u.email, u.role, 
@@ -348,8 +349,15 @@ exports.getEmployeeActivities = async (req, res) => {
     connection.release();
     res.json(employees || []);
   } catch (error) {
-    console.error('[v0] Employee activities error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Employee activities error:', error.message, error.stack);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch employee activities' });
   }
 };
 
