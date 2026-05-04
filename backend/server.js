@@ -35,7 +35,7 @@ app.put('/api/menu-items/:id', authMiddleware, roleMiddleware(['admin']), menuCo
 app.delete('/api/menu-items/:id', authMiddleware, roleMiddleware(['admin']), menuController.deleteMenuItem);
 
 // Order Routes
-app.post('/api/orders', authMiddleware, roleMiddleware(['cashier']), orderController.createOrder);
+app.post('/api/orders', authMiddleware, roleMiddleware(['cashier', 'admin']), orderController.createOrder);
 app.get('/api/orders', authMiddleware, orderController.getOrders);
 app.get('/api/orders/:id', authMiddleware, orderController.getOrderDetails);
 app.put('/api/orders/:id/status', authMiddleware, orderController.updateOrderStatus);

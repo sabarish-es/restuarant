@@ -196,7 +196,10 @@ export default function CashierPage() {
         setCheckoutMode(false);
         setPaymentMethod('cash');
       } else {
-        alert(`Failed to create order: ${responseData.message || 'Unknown error'}`);
+        const errorMsg = responseData.message || 'Unknown error';
+        const userRole = responseData.userRole ? ` (Your role: ${responseData.userRole})` : '';
+        alert(`Failed to create order: ${errorMsg}${userRole}`);
+        console.error('[v0] API Error:', responseData);
       }
     } catch (error) {
       console.error('[v0] Failed to create order:', error);

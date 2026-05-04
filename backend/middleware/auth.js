@@ -19,7 +19,12 @@ const authMiddleware = (req, res, next) => {
 const roleMiddleware = (roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'Unauthorized role' });
+      console.error(`[v0] Role check failed: user role "${req.user.role}" not in allowed roles [${roles.join(', ')}]`);
+      return res.status(403).json({ 
+        message: 'Unauthorized role',
+        userRole: req.user.role,
+        requiredRoles: roles
+      });
     }
     next();
   };
