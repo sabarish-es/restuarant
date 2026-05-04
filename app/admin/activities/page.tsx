@@ -100,7 +100,7 @@ export default function EmployeeActivitiesPage() {
 
   const totalEmployees = employees.length;
   const totalOrders = employees.reduce((sum, e) => sum + e.total_orders, 0);
-  const totalSales = employees.reduce((sum, e) => sum + (e.total_sales || 0), 0);
+  const totalSales = employees.reduce((sum, e) => sum + (Number(e.total_sales) || 0), 0);
   const todayOrders = employees.reduce((sum, e) => sum + e.today_orders, 0);
 
   return (
@@ -233,7 +233,7 @@ export default function EmployeeActivitiesPage() {
                         </span>
                       </td>
                       <td className="hidden md:table-cell py-3 px-2 md:px-4 text-right font-semibold text-emerald-600">
-                        ₹{(employee.total_sales || 0).toFixed(2)}
+                        ₹{(Number(employee.total_sales) || 0).toFixed(2)}
                       </td>
                       <td className="hidden md:table-cell py-3 px-2 md:px-4 text-xs text-gray-600">
                         {employee.last_order_at 
