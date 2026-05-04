@@ -14,9 +14,29 @@ exports.createOrder = async (req, res) => {
     const [settings] = await connection.execute('SELECT tax_percentage FROM settings LIMIT 1');
     const taxPercentage = settings[0]?.tax_percentage || 5;
 
+    // Validate and fetch menu prices if missing
+    const itemsWithPrices = [];
+    for (const item of items) {
+      if (!item.menuItemId || !item.quantity) {
+        return res.status(400).json({ message: 'Invalid item data. menuItemId and quantity are required.' });
+      }
+      
+      let itemPrice = item.price;
+      if (!itemPrice) {
+        // Fetch price from menu if not provided
+        const [menuItem] = await connection.execute('SELECT price FROM menu_items WHERE id = ?', [item.menuItemId]);
+        if (!menuItem || !menuItem[0]) {
+          return res.status(400).json({ message: `Menu item ${item.menuItemId} not found.` });
+        }
+        itemPrice = menuItem[0].price;
+      }
+      
+      itemsWithPrices.push({ ...item, price: itemPrice });
+    }
+
     // Calculate totals
     let subtotal = 0;
-    for (const item of items) {
+    for (const item of itemsWithPrices) {
       subtotal += item.quantity * item.price;
     }
 
@@ -34,7 +54,7 @@ exports.createOrder = async (req, res) => {
     const orderId = orderResult.insertId;
 
     // Insert order items
-    for (const item of items) {
+    for (const item of itemsWithPrices) {
       await connection.execute(
         `INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) VALUES (?, ?, ?, ?)`,
         [orderId, item.menuItemId, item.quantity, item.price]
