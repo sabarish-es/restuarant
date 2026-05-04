@@ -342,7 +342,7 @@ exports.getEmployeeActivities = async (req, res) => {
       LEFT JOIN employees e ON u.id = e.user_id
       LEFT JOIN orders o ON u.id = o.cashier_id
       WHERE u.role IN ('cashier', 'kitchen', 'admin')
-      GROUP BY u.id
+      GROUP BY u.id, u.username, u.email, u.role, e.first_name, e.last_name, e.hire_date
       ORDER BY COALESCE(e.first_name, u.username)
     `);
 
