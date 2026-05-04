@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Eye, Search, TrendingUp, AlertCircle } from 'lucide-react';
+import { Eye, Search, TrendingUp, AlertCircle, FileDown, Printer } from 'lucide-react';
 import { employeeApi } from '@/lib/api';
 import { Modal } from '@/components/Modal';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface Employee {
   id: number;
@@ -55,6 +57,7 @@ export default function EmployeeActivitiesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeDetails | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const billRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchEmployeeActivities();
@@ -90,6 +93,61 @@ export default function EmployeeActivitiesPage() {
     } finally {
       setDetailsLoading(false);
     }
+  };
+
+  const downloadPDF = async () => {
+    if (!billRef.current || !selectedEmployee) return;
+
+    try {
+      const canvas = await html2canvas(billRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+      });
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 190;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+      pdf.save(`employee-${selectedEmployee.employee.id}-activities.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF');
+    }
+  };
+
+  const printBill = () => {
+    if (!billRef.current) return;
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Please allow pop-ups to print');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Employee Bill</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .bill { width: 80mm; margin: 0 auto; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body onload="window.print()">
+          ${billRef.current.innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const filteredEmployees = employees.filter((e) =>
@@ -292,6 +350,70 @@ export default function EmployeeActivitiesPage() {
               <div>
                 <p className="text-xs text-gray-600">Hire Date</p>
                 <p className="font-semibold text-sm">{new Date(selectedEmployee.employee.hire_date).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 mb-4 pt-4 border-t">
+              <Button onClick={downloadPDF} className="flex-1 bg-green-600 hover:bg-green-700">
+                <FileDown className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+              <Button onClick={printBill} variant="outline" className="flex-1">
+                <Printer className="w-4 h-4 mr-2" />
+                Print Bill
+              </Button>
+            </div>
+
+            {/* Bill Content (hidden for print) */}
+            <div ref={billRef} className="hidden print:block mb-4 p-4 bg-white border">
+              <div className="text-center mb-4">
+                <h2 className="font-bold text-lg">Employee Activity Report</h2>
+              </div>
+              
+              <div className="space-y-2 text-xs mb-4">
+                <div className="flex justify-between">
+                  <span>Name:</span>
+                  <span className="font-semibold">{selectedEmployee.employee.first_name} {selectedEmployee.employee.last_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Position:</span>
+                  <span className="font-semibold capitalize">{selectedEmployee.employee.role}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Hire Date:</span>
+                  <span>{new Date(selectedEmployee.employee.hire_date).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              <div className="border-t pt-2 mb-4">
+                <h3 className="font-bold text-xs mb-2">Total Statistics</h3>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span>Total Orders:</span>
+                    <span>{selectedEmployee.orders.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Sales:</span>
+                    <span>₹{selectedEmployee.orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-2">
+                <h3 className="font-bold text-xs mb-2">Recent Orders</h3>
+                <div className="space-y-1 text-xs">
+                  {selectedEmployee.orders.slice(0, 10).map((order) => (
+                    <div key={order.id} className="flex justify-between">
+                      <span>{order.order_number}</span>
+                      <span>₹{(Number(order.total) || 0).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t pt-2 mt-4 text-center text-xs text-gray-600">
+                <p>Generated on {new Date().toLocaleString()}</p>
               </div>
             </div>
 

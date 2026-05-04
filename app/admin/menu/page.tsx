@@ -190,7 +190,7 @@ export default function MenuPage() {
                   <tr key={item.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-2 md:px-4">
                       {item.image_url ? (
-                        <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded object-cover" />
+                        <img src={`${process.env.NEXT_PUBLIC_API_URL}${item.image_url}`} alt={item.name} className="w-10 h-10 rounded object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">🍽️</div>
                       )}
