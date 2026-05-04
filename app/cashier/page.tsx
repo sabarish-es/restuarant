@@ -247,7 +247,16 @@ export default function CashierPage() {
                 >
                   <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden">
                     {item.image ? (
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={`${process.env.NEXT_PUBLIC_API_URL}${item.image}`} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          console.log('[v0] Image load error for:', item.image);
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement?.querySelector('span')?.classList.remove('hidden');
+                        }}
+                      />
                     ) : (
                       <span>🍽️</span>
                     )}
