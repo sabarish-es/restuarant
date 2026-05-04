@@ -325,7 +325,7 @@ export default function EmployeeActivitiesPage() {
                         <p className="text-xs text-gray-600">
                           {new Date(order.created_at).toLocaleString()}
                         </p>
-                        <p className="font-semibold text-emerald-600">₹{order.total.toFixed(2)}</p>
+                        <p className="font-semibold text-emerald-600">₹{(Number(order.total) || 0).toFixed(2)}</p>
                       </div>
                     </div>
                   ))
