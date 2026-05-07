@@ -1,11 +1,22 @@
 const pool = require('../config/db');
 
 exports.createOrder = async (req, res) => {
+  let connection = null;
   try {
     const { tableId, customerId, items, orderType, notes } = req.body;
-    const cashierId = req.user.id;
+    const cashierId = req.user?.id;
 
-    const connection = await pool.getConnection();
+    console.log('[v0] Creating order with data:', { tableId, customerId, itemCount: items?.length, orderType });
+
+    if (!cashierId) {
+      return res.status(401).json({ message: 'User information not found. Please login again.' });
+    }
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: 'No items in order.' });
+    }
+
+    connection = await pool.getConnection();
 
     // Generate order number
     const orderNumber = 'ORD' + Date.now();
@@ -18,6 +29,7 @@ exports.createOrder = async (req, res) => {
     const itemsWithPrices = [];
     for (const item of items) {
       if (!item.menuItemId || !item.quantity) {
+        connection.release();
         return res.status(400).json({ message: 'Invalid item data. menuItemId and quantity are required.' });
       }
       
@@ -26,6 +38,7 @@ exports.createOrder = async (req, res) => {
         // Fetch price from menu if not provided
         const [menuItem] = await connection.execute('SELECT price FROM menu_items WHERE id = ?', [item.menuItemId]);
         if (!menuItem || !menuItem[0]) {
+          connection.release();
           return res.status(400).json({ message: `Menu item ${item.menuItemId} not found.` });
         }
         itemPrice = menuItem[0].price;
@@ -43,6 +56,8 @@ exports.createOrder = async (req, res) => {
     const tax = (subtotal * taxPercentage) / 100;
     const total = subtotal + tax;
 
+    console.log('[v0] Order totals:', { subtotal, tax, total });
+
     // Insert order
     const [orderResult] = await connection.execute(
       `INSERT INTO orders 
@@ -52,6 +67,7 @@ exports.createOrder = async (req, res) => {
     );
 
     const orderId = orderResult.insertId;
+    console.log('[v0] Order created with ID:', orderId);
 
     // Insert order items
     for (const item of itemsWithPrices) {
@@ -60,6 +76,8 @@ exports.createOrder = async (req, res) => {
         [orderId, item.menuItemId, item.quantity, item.price]
       );
     }
+
+    console.log('[v0] Order items inserted');
 
     // Update table status if dine-in
     if (tableId && orderType !== 'takeaway') {
@@ -71,7 +89,7 @@ exports.createOrder = async (req, res) => {
 
     connection.release();
 
-    res.status(201).json({
+    const responseData = {
       message: 'Order created successfully',
       order: {
         id: orderId,
@@ -81,9 +99,20 @@ exports.createOrder = async (req, res) => {
         total,
         status: 'pending',
       },
-    });
+    };
+
+    console.log('[v0] Sending response:', responseData);
+    res.status(201).json(responseData);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error creating order:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: 'Failed to create order', error: error.message });
   }
 };
 
