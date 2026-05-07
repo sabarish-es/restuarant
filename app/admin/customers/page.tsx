@@ -25,12 +25,6 @@ export default function CustomersPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setError('Please login to view customers');
-      setLoading(false);
-      return;
-    }
     fetchCustomers();
   }, []);
 
