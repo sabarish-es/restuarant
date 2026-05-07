@@ -22,7 +22,15 @@ export default function CustomersPage() {
     zip_code: ''
   });
 
+  const [error, setError] = useState('');
+
   useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setError('Please login to view customers');
+      setLoading(false);
+      return;
+    }
     fetchCustomers();
   }, []);
 
@@ -34,9 +42,12 @@ export default function CustomersPage() {
       });
       if (response.ok) {
         setCustomers(await response.json());
+      } else {
+        setError('Failed to fetch customers');
       }
     } catch (error) {
-      console.error('Failed to fetch customers', error);
+      console.error('[v0] Failed to fetch customers', error);
+      setError('Failed to fetch customers. Ensure backend is running.');
     } finally {
       setLoading(false);
     }
