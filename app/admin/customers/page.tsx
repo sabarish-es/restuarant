@@ -41,7 +41,14 @@ export default function CustomersPage() {
     }
 
     const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Authentication required. Please login again.');
+      return;
+    }
+
     try {
+      console.log('[v0] Adding customer with data:', formData);
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/customers`, {
         method: 'POST',
         headers: {
@@ -51,17 +58,20 @@ export default function CustomersPage() {
         body: JSON.stringify(formData),
       });
 
+      console.log('[v0] Customer creation response status:', response.status);
+      const errorData = await response.json();
+      console.log('[v0] Customer creation response:', errorData);
+
       if (response.ok) {
         setFormData({ name: '', email: '', phone: '' });
         setShowAddModal(false);
         fetchCustomers();
         alert('Customer added successfully');
       } else {
-        const errorData = await response.json();
         alert(`Failed to add customer: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Failed to add customer', error);
+      console.error('[v0] Failed to add customer:', error);
       alert(`Error: ${error instanceof Error ? error.message : 'Failed to add customer'}`);
     }
   };
