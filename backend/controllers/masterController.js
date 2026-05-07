@@ -3,13 +3,27 @@ const bcrypt = require('bcryptjs');
 
 // Tables
 exports.getTables = async (req, res) => {
+  let connection = null;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+    console.log('[v0] Fetching tables...');
     const [tables] = await connection.execute('SELECT * FROM tables ORDER BY table_number');
+    console.log('[v0] Tables fetched:', tables.length);
     connection.release();
     res.json(tables);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching tables:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ 
+      message: 'Failed to fetch tables', 
+      error: error.message 
+    });
   }
 };
 

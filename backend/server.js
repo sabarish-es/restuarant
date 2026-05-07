@@ -24,12 +24,12 @@ app.post('/api/auth/login', authController.login);
 app.post('/api/auth/create-user', authMiddleware, roleMiddleware(['admin']), authController.createUser);
 
 // Menu Routes
-app.get('/api/categories', menuController.getCategories);
+app.get('/api/categories', authMiddleware, menuController.getCategories);
 app.post('/api/categories', authMiddleware, roleMiddleware(['admin']), menuController.createCategory);
 app.put('/api/categories/:id', authMiddleware, roleMiddleware(['admin']), menuController.updateCategory);
 app.delete('/api/categories/:id', authMiddleware, roleMiddleware(['admin']), menuController.deleteCategory);
 
-app.get('/api/menu-items', menuController.getMenuItems);
+app.get('/api/menu-items', authMiddleware, menuController.getMenuItems);
 app.post('/api/menu-items', authMiddleware, roleMiddleware(['admin']), menuController.createMenuItem);
 app.put('/api/menu-items/:id', authMiddleware, roleMiddleware(['admin']), menuController.updateMenuItem);
 app.delete('/api/menu-items/:id', authMiddleware, roleMiddleware(['admin']), menuController.deleteMenuItem);
