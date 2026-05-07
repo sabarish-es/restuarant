@@ -39,6 +39,7 @@ app.post('/api/orders', authMiddleware, roleMiddleware(['cashier', 'admin']), or
 app.get('/api/orders', authMiddleware, orderController.getOrders);
 app.get('/api/orders/:id', authMiddleware, orderController.getOrderDetails);
 app.put('/api/orders/:id/status', authMiddleware, orderController.updateOrderStatus);
+app.get('/api/orders/:id/print', authMiddleware, orderController.printBill);
 app.get('/api/kitchen-orders', authMiddleware, roleMiddleware(['kitchen']), orderController.getKitchenOrders);
 
 // Tables Routes

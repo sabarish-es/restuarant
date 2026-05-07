@@ -187,7 +187,14 @@ export default function CashierPage() {
       console.log('[v0] Response data:', responseData);
 
       if (response.ok) {
-        alert(`Order created successfully! Order #${responseData.order?.orderNumber || 'N/A'}`);
+        const orderId = responseData.order?.id;
+        const orderNumber = responseData.order?.orderNumber || 'N/A';
+        
+        // Print the bill after successful order creation
+        if (orderId) {
+          await handlePrintBill(orderId, orderNumber);
+        }
+        
         setCurrentOrder([]);
         setSelectedTable(null);
         setShowTableModal(true);
@@ -201,6 +208,46 @@ export default function CashierPage() {
     } catch (error) {
       console.error('[v0] Failed to create order:', error);
       alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handlePrintBill = async (orderId: number, orderNumber: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Authentication required. Please login again.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}/print`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const billHTML = data.billHTML;
+
+        // Open print window
+        const printWindow = window.open('', 'PRINT', 'height=600,width=400');
+        if (printWindow) {
+          printWindow.document.write(billHTML);
+          printWindow.document.close();
+          printWindow.focus();
+          
+          // Trigger print dialog after content loads
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        }
+        
+        alert(`Order #${orderNumber} created successfully!`);
+      } else {
+        console.error('[v0] Failed to fetch bill:', response.status);
+        alert(`Order #${orderNumber} created, but bill print failed. Please retry from admin panel.`);
+      }
+    } catch (error) {
+      console.error('[v0] Failed to print bill:', error);
+      alert(`Order created but print failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
