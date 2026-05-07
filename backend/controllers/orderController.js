@@ -232,3 +232,140 @@ exports.getKitchenOrders = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+exports.printBill = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const connection = await pool.getConnection();
+
+    const [orders] = await connection.execute(
+      `SELECT o.*, c.name as customer_name, c.phone as customer_phone, rt.table_number 
+       FROM orders o 
+       LEFT JOIN customers c ON o.customer_id = c.id 
+       LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+       WHERE o.id = ?`,
+      [id]
+    );
+
+    if (orders.length === 0) {
+      connection.release();
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const [items] = await connection.execute(
+      `SELECT oi.*, m.name as menu_item_name 
+       FROM order_items oi 
+       JOIN menu_items m ON oi.menu_item_id = m.id 
+       WHERE oi.order_id = ?`,
+      [id]
+    );
+
+    connection.release();
+
+    const order = orders[0];
+    
+    // Generate bill HTML
+    const billHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Bill #${order.orderNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; padding: 10px; }
+          .bill-container { max-width: 350px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .header h1 { font-size: 18px; margin-bottom: 5px; }
+          .header p { font-size: 12px; color: #666; }
+          .order-info { font-size: 12px; margin: 10px 0; }
+          .order-info p { margin: 3px 0; }
+          .items { margin: 15px 0; }
+          .item { display: flex; justify-content: space-between; margin: 5px 0; font-size: 12px; }
+          .item-name { flex: 1; }
+          .item-qty { width: 40px; text-align: center; }
+          .item-price { width: 50px; text-align: right; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .totals { margin: 10px 0; font-size: 12px; }
+          .total-line { display: flex; justify-content: space-between; margin: 5px 0; }
+          .total-line.grand { border-top: 2px solid #000; padding-top: 5px; font-weight: bold; font-size: 14px; }
+          .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #666; }
+          .thank-you { text-align: center; margin-top: 15px; font-weight: bold; }
+          @media print {
+            body { margin: 0; padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="bill-container">
+          <div class="header">
+            <h1>FoodieHub</h1>
+            <p>Restaurant Bill</p>
+          </div>
+          
+          <div class="order-info">
+            <p><strong>Order #:</strong> ${order.orderNumber}</p>
+            <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('en-IN')}</p>
+            <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleTimeString('en-IN')}</p>
+            ${order.table_number ? `<p><strong>Table:</strong> ${order.table_number}</p>` : ''}
+            ${order.customer_name ? `<p><strong>Customer:</strong> ${order.customer_name}</p>` : ''}
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="items">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 5px;">
+              <div style="flex: 1;">Item</div>
+              <div style="width: 40px; text-align: center;">Qty</div>
+              <div style="width: 50px; text-align: right;">Price</div>
+            </div>
+            ${items.map(item => `
+              <div class="item">
+                <div class="item-name">${item.menu_item_name}</div>
+                <div class="item-qty">${item.quantity}</div>
+                <div class="item-price">₹${(item.unit_price * item.quantity).toFixed(2)}</div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="totals">
+            <div class="total-line">
+              <span>Subtotal:</span>
+              <span>₹${order.subtotal.toFixed(2)}</span>
+            </div>
+            <div class="total-line">
+              <span>Tax (${((order.tax / order.subtotal) * 100).toFixed(1)}%):</span>
+              <span>₹${order.tax.toFixed(2)}</span>
+            </div>
+            <div class="total-line grand">
+              <span>Total Amount:</span>
+              <span>₹${order.total.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div class="thank-you">Thank You!</div>
+          <div class="footer">
+            <p>Please come again</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    res.json({ 
+      billHTML,
+      order: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        subtotal: order.subtotal,
+        tax: order.tax,
+        total: order.total,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
