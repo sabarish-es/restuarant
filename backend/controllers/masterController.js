@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 exports.getTables = async (req, res) => {
   try {
     const connection = await pool.getConnection();
-    const [tables] = await connection.execute('SELECT * FROM restaurant_tables ORDER BY table_number');
+    const [tables] = await connection.execute('SELECT * FROM tables ORDER BY table_number');
     connection.release();
     res.json(tables);
   } catch (error) {
@@ -18,7 +18,7 @@ exports.updateTableStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const connection = await pool.getConnection();
-    await connection.execute('UPDATE restaurant_tables SET status = ? WHERE id = ?', [status, id]);
+    await connection.execute('UPDATE tables SET status = ? WHERE id = ?', [status, id]);
     connection.release();
     res.json({ message: 'Table status updated' });
   } catch (error) {
@@ -39,17 +39,47 @@ exports.getCustomers = async (req, res) => {
 };
 
 exports.createCustomer = async (req, res) => {
+  let connection = null;
   try {
     const { name, email, phone, address, city, state, zip_code } = req.body;
-    const connection = await pool.getConnection();
+    
+    console.log('[v0] Creating customer with data:', { name, email, phone });
+    
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Customer name is required' });
+    }
+    
+    connection = await pool.getConnection();
     const [result] = await connection.execute(
       'INSERT INTO customers (name, email, phone, address, city, state, zip_code) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, email, phone, address, city, state, zip_code]
+      [name, email || null, phone || null, address || null, city || null, state || null, zip_code || null]
     );
     connection.release();
+    
+    console.log('[v0] Customer created with ID:', result.insertId);
     res.status(201).json({ id: result.insertId, name, email, phone });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error creating customer:', error.message, error.code);
+    
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    
+    let message = 'Failed to create customer';
+    
+    if (error.message && error.message.includes('Connection')) {
+      message = 'Database connection failed. Ensure backend server is running.';
+    } else if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      message = 'Invalid reference in customer data';
+    } else if (error.message) {
+      message = error.message;
+    }
+    
+    res.status(500).json({ message });
   }
 };
 
@@ -244,7 +274,7 @@ exports.getDashboardStats = async (req, res) => {
       `SELECT o.*, c.name as customer_name, rt.table_number 
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
-       LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+       LEFT JOIN tables rt ON o.table_id = rt.id 
        WHERE DATE(o.created_at) = CURDATE()
        ORDER BY o.created_at DESC LIMIT 10`
     );
