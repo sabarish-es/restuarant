@@ -10,13 +10,24 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Category Operations
 exports.getCategories = async (req, res) => {
+  let connection = null;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+    console.log('[v0] Fetching categories...');
     const [categories] = await connection.execute('SELECT * FROM categories ORDER BY name');
     connection.release();
+    console.log('[v0] Fetched', categories.length, 'categories');
     res.json(categories);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching categories:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: 'Failed to fetch categories', error: error.message });
   }
 };
 
@@ -69,9 +80,12 @@ exports.deleteCategory = async (req, res) => {
 
 // Menu Items Operations
 exports.getMenuItems = async (req, res) => {
+  let connection = null;
   try {
     const { categoryId } = req.query;
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+
+    console.log('[v0] Fetching menu items, categoryId:', categoryId);
 
     let query = `
       SELECT m.*, c.name as category_name 
@@ -90,9 +104,18 @@ exports.getMenuItems = async (req, res) => {
     const [items] = await connection.execute(query, params);
     connection.release();
 
+    console.log('[v0] Fetched', items.length, 'menu items');
     res.json(items);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching menu items:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: 'Failed to fetch menu items', error: error.message });
   }
 };
 
