@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { tableApi } from '@/lib/api';
 
 export default function TablesPage() {
   const [tables, setTables] = useState([]);
@@ -18,7 +17,27 @@ export default function TablesPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await tableApi.getAll();
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      if (!token) {
+        setError('Authentication required. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch tables: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('[v0] Fetched tables:', data);
       setTables(Array.isArray(data) ? data : []);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to fetch tables. Ensure backend server is running on port 3001.';
@@ -31,7 +50,27 @@ export default function TablesPage() {
 
   const updateTableStatus = async (tableId: number, status: string) => {
     try {
-      await tableApi.updateStatus(tableId, status);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      if (!token) {
+        setError('Authentication required. Please login again.');
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables/${tableId}/status`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update table status: ${response.statusText}`);
+      }
+
+      console.log('[v0] Table status updated successfully');
       fetchTables();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to update table status';

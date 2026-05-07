@@ -159,6 +159,9 @@ export const orderApi = {
       requiresAuth: true,
     }),
 
+  printBill: (id: number) =>
+    apiCall(`/orders/${id}/print`, { requiresAuth: true }),
+
   getKitchenOrders: () =>
     apiCall('/kitchen-orders', { requiresAuth: true }),
 };
