@@ -27,12 +27,6 @@ export default function MenuPage() {
   });
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setError('Please login to view menu items');
-      setLoading(false);
-      return;
-    }
     fetchData();
   }, []);
 

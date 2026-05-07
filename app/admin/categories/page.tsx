@@ -18,18 +18,8 @@ export default function CategoriesPage() {
   const [editName, setEditName] = useState('');
 
   useEffect(() => {
-    checkAuthAndFetch();
-  }, []);
-
-  const checkAuthAndFetch = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setError('Please login to view categories');
-      setLoading(false);
-      return;
-    }
     fetchCategories();
-  };
+  }, []);
 
   const fetchCategories = async () => {
     setLoading(true);

@@ -17,13 +17,7 @@ export default function TablesPage() {
     setLoading(true);
     setError('');
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      
-      if (!token) {
-        setError('Authentication required. Please login again.');
-        setLoading(false);
-        return;
-      }
+      const token = localStorage.getItem('token');
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables`, {
         headers: { 
