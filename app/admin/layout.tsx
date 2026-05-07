@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    // Check auth only once on initial mount
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
 
@@ -50,7 +50,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } else {
       setIsAuthorized(true);
     }
-  }, [router]);
+    
+    setMounted(true);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

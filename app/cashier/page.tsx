@@ -183,12 +183,23 @@ export default function CashierPage() {
       });
 
       console.log('[v0] Response status:', response.status);
-      const responseData = await response.json();
+      
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.error('[v0] Failed to parse response:', parseError);
+        alert('Failed to create order: Invalid response from server');
+        return;
+      }
+      
       console.log('[v0] Response data:', responseData);
 
       if (response.ok) {
         const orderId = responseData.order?.id;
         const orderNumber = responseData.order?.orderNumber || 'N/A';
+        
+        alert(`Order #${orderNumber} created successfully!`);
         
         // Print the bill after successful order creation
         if (orderId) {
@@ -201,7 +212,7 @@ export default function CashierPage() {
         setCheckoutMode(false);
         setPaymentMethod('cash');
       } else {
-        const errorMsg = responseData.message || 'Unknown error';
+        const errorMsg = responseData?.message || 'Unknown error';
         alert(`Failed to create order: ${errorMsg}`);
         console.error('[v0] API Error:', { status: response.status, data: responseData });
       }
