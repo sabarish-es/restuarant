@@ -64,7 +64,7 @@ exports.createOrder = async (req, res) => {
     // Update table status if dine-in
     if (tableId && orderType !== 'takeaway') {
       await connection.execute(
-        'UPDATE restaurant_tables SET status = ? WHERE id = ?',
+        'UPDATE tables SET status = ? WHERE id = ?',
         ['occupied', tableId]
       );
     }
@@ -99,7 +99,7 @@ exports.getOrders = async (req, res) => {
              u.username as cashier_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
-      LEFT JOIN restaurant_tables rt ON o.table_id = rt.id
+      LEFT JOIN tables rt ON o.table_id = rt.id
       LEFT JOIN users u ON o.cashier_id = u.id
     `;
 
@@ -131,7 +131,7 @@ exports.getOrderDetails = async (req, res) => {
       `SELECT o.*, c.name as customer_name, rt.table_number 
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
-       LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+       LEFT JOIN tables rt ON o.table_id = rt.id 
        WHERE o.id = ?`,
       [id]
     );
@@ -183,7 +183,7 @@ exports.updateOrderStatus = async (req, res) => {
 
       if (order[0]?.table_id) {
         await connection.execute(
-          'UPDATE restaurant_tables SET status = ? WHERE id = ?',
+          'UPDATE tables SET status = ? WHERE id = ?',
           ['available', order[0].table_id]
         );
       }
@@ -206,7 +206,7 @@ exports.getKitchenOrders = async (req, res) => {
              rt.table_number,
              u.username as cashier_name
       FROM orders o
-      LEFT JOIN restaurant_tables rt ON o.table_id = rt.id
+      LEFT JOIN tables rt ON o.table_id = rt.id
       LEFT JOIN users u ON o.cashier_id = u.id
       WHERE o.status IN ('pending', 'preparing', 'ready')
       ORDER BY o.created_at ASC
@@ -242,7 +242,7 @@ exports.printBill = async (req, res) => {
       `SELECT o.*, c.name as customer_name, c.phone as customer_phone, rt.table_number 
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
-       LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+       LEFT JOIN tables rt ON o.table_id = rt.id 
        WHERE o.id = ?`,
       [id]
     );
