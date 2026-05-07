@@ -12,7 +12,15 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: ''
+  });
 
   useEffect(() => {
     fetchCustomers();
@@ -63,7 +71,15 @@ export default function CustomersPage() {
       console.log('[v0] Customer creation response:', errorData);
 
       if (response.ok) {
-        setFormData({ name: '', email: '', phone: '' });
+        setFormData({ 
+          name: '', 
+          email: '', 
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          zip_code: ''
+        });
         setShowAddModal(false);
         fetchCustomers();
         alert('Customer added successfully');
@@ -188,9 +204,9 @@ export default function CustomersPage() {
       </Card>
 
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Customer">
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-96 overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium mb-2">Customer Name</label>
+            <label className="block text-sm font-medium mb-2">Customer Name *</label>
             <Input
               placeholder="Enter customer name"
               value={formData.name}
@@ -212,6 +228,40 @@ export default function CustomersPage() {
               placeholder="Enter phone number"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Address</label>
+            <Input
+              placeholder="Enter address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-2">City</label>
+              <Input
+                placeholder="City"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">State</label>
+              <Input
+                placeholder="State"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Zip Code</label>
+            <Input
+              placeholder="Zip code"
+              value={formData.zip_code}
+              onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
             />
           </div>
           <div className="flex gap-2 pt-4">
