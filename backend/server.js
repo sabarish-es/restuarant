@@ -29,7 +29,7 @@ app.post('/api/categories', authMiddleware, roleMiddleware(['admin']), menuContr
 app.put('/api/categories/:id', authMiddleware, roleMiddleware(['admin']), menuController.updateCategory);
 app.delete('/api/categories/:id', authMiddleware, roleMiddleware(['admin']), menuController.deleteCategory);
 
-app.get('/api/menu-items', authMiddleware, menuController.getMenuItems);
+app.get('/api/menu-items', authMiddleware, menuController.getMenuItems); // For authenticated users (admin, cashier, kitchen)
 app.post('/api/menu-items', authMiddleware, roleMiddleware(['admin']), menuController.createMenuItem);
 app.put('/api/menu-items/:id', authMiddleware, roleMiddleware(['admin']), menuController.updateMenuItem);
 app.delete('/api/menu-items/:id', authMiddleware, roleMiddleware(['admin']), menuController.deleteMenuItem);

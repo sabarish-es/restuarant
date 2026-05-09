@@ -200,22 +200,30 @@ export default function CashierPage() {
       });
 
       console.log('[v0] Response status:', response.status);
+      console.log('[v0] Response content-type:', response.headers.get('content-type'));
       
-      let responseData;
+      let responseData = {};
       try {
-        responseData = await response.json();
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          responseData = await response.json();
+        } else {
+          const text = await response.text();
+          console.error('[v0] Non-JSON response:', text);
+          responseData = { message: 'Invalid response format from server' };
+        }
       } catch (parseError) {
         console.error('[v0] Failed to parse response:', parseError);
-        alert('Failed to create order: Invalid response from server');
-        return;
+        responseData = { message: 'Failed to parse server response' };
       }
       
-      console.log('[v0] Response data:', responseData);
+      console.log('[v0] Response data:', JSON.stringify(responseData));
 
       if (response.ok) {
         const orderId = responseData.order?.id;
         const orderNumber = responseData.order?.orderNumber || 'N/A';
         
+        console.log('[v0] Order created successfully:', { orderId, orderNumber });
         alert(`Order #${orderNumber} created successfully!`);
         
         // Print the bill after successful order creation
@@ -229,9 +237,13 @@ export default function CashierPage() {
         setCheckoutMode(false);
         setPaymentMethod('cash');
       } else {
-        const errorMsg = responseData?.message || 'Unknown error';
+        const errorMsg = responseData?.message || responseData?.error || `Server error (${response.status})`;
+        console.error('[v0] Order creation failed:', { 
+          status: response.status, 
+          message: errorMsg, 
+          data: responseData 
+        });
         alert(`Failed to create order: ${errorMsg}`);
-        console.error('[v0] API Error:', { status: response.status, data: responseData });
       }
     } catch (error) {
       console.error('[v0] Failed to create order:', error);
