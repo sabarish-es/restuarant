@@ -32,25 +32,31 @@ export async function apiCall(
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/';
-      }
-    }
-    
     // Try to parse error response as JSON
     let errorMessage = `API Error: ${response.statusText}`;
     try {
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
+        errorMessage = errorData.message || errorData.error || errorMessage;
       }
     } catch (e) {
       // If JSON parsing fails, use default error message
       console.error('[v0] Error parsing error response:', e);
+    }
+    
+    // Only logout on 401 if we have a valid token that's actually expired
+    if (response.status === 401 && typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        console.log('[v0] Token invalid, clearing auth');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Only redirect if not already on login page
+        if (window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
     }
     
     throw new Error(errorMessage);
