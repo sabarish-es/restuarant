@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({ 
     name: '', 
     category_id: '', 
@@ -82,9 +83,15 @@ export default function MenuPage() {
         itemData.imageUrl = imagePreview;
       }
 
+      console.log('[v0] Adding menu item:', itemData);
       await menuApi.create(itemData);
+      
+      // Reset form and clear file input
       setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
       setImagePreview('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setShowAddModal(false);
       await fetchData();
       alert('Item added successfully');
@@ -264,6 +271,7 @@ export default function MenuPage() {
           <div>
             <label className="block text-sm font-medium mb-2">Item Image</label>
             <Input
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={handleImageChange}
@@ -290,7 +298,18 @@ export default function MenuPage() {
             <Button onClick={handleAddItem} className="flex-1 bg-purple-600 hover:bg-purple-700">
               Add Item
             </Button>
-            <Button onClick={() => { setShowAddModal(false); setImagePreview(''); }} variant="outline" className="flex-1">
+            <Button 
+              onClick={() => { 
+                setShowAddModal(false); 
+                setImagePreview('');
+                setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }} 
+              variant="outline" 
+              className="flex-1"
+            >
               Cancel
             </Button>
           </div>
