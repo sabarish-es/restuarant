@@ -84,7 +84,7 @@ export const authApi = {
 // Category APIs
 export const categoryApi = {
   getAll: () =>
-    apiCall('/categories'),
+    apiCall('/categories', { requiresAuth: true }),
 
   create: (data: any) =>
     apiCall('/categories', {
