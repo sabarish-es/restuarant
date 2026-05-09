@@ -1,3 +1,11 @@
+# Complete Fixed Code - backend/scripts/initDatabase.js
+
+## File Location
+`backend/scripts/initDatabase.js`
+
+## Full Code (Fixed Version)
+
+```javascript
 const mysql = require('mysql2/promise');
 require('dotenv').config({ path: '../.env' });
 
@@ -201,3 +209,137 @@ async function initDatabase() {
 }
 
 initDatabase();
+```
+
+## Key Fixes Applied
+
+1. **Settings Table Column Names** (Line 126-138)
+   - Changed: `key_name` → `setting_key`
+   - Changed: `key_value` → `setting_value`
+   - Removed: `description TEXT` field
+
+2. **Settings Insert Statement** (Line 135-140)
+   - Updated column names in INSERT statement
+   - Removed description values
+   - Aligned with database.sql schema
+
+3. **Index Reference** (Line 131)
+   - Changed: `INDEX idx_key (key_name)` → `INDEX idx_key (setting_key)`
+
+## What Each Table Does
+
+| Table | Purpose |
+|-------|---------|
+| **users** | Store user accounts (admin, cashier, kitchen, manager) |
+| **categories** | Food categories (Beverages, Appetizers, etc.) |
+| **menu_items** | Food items with prices and images |
+| **tables** | Restaurant seating areas |
+| **customers** | Customer information |
+| **orders** | Order records with status tracking |
+| **order_items** | Individual items in each order |
+| **employees** | Employee details linked to users |
+| **settings** | Restaurant configuration (name, phone, currency, tax) |
+
+## Column Specifications
+
+### Settings Table (Most Important - Where Error Was)
+
+```sql
+CREATE TABLE settings (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  setting_key     VARCHAR(100) UNIQUE NOT NULL,    -- Configuration key
+  setting_value   TEXT,                            -- Configuration value
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_key (setting_key)
+);
+```
+
+**Default Values:**
+```
+setting_key: 'restaurant_name'      → setting_value: 'My Restaurant'
+setting_key: 'restaurant_phone'     → setting_value: '+1234567890'
+setting_key: 'currency'             → setting_value: 'USD'
+setting_key: 'tax_rate'             → setting_value: '0.05'
+```
+
+## How to Use This Code
+
+1. Replace existing `backend/scripts/initDatabase.js` with this code
+2. Make sure `.env` file is in project root with:
+   ```
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=your_mysql_password
+   DB_NAME=restaurant_management
+   ```
+3. Run: `cd backend && node scripts/initDatabase.js`
+4. You should see all 9 tables created successfully
+
+## Verification
+
+After running the script, you should see:
+
+```
+✅ Connected to database
+
+Creating tables...
+
+  ✓ CREATE TABLE IF NOT EXISTS users
+  ✓ CREATE TABLE IF NOT EXISTS categories
+  ✓ CREATE TABLE IF NOT EXISTS menu_items
+  ✓ CREATE TABLE IF NOT EXISTS tables
+  ✓ CREATE TABLE IF NOT EXISTS customers
+  ✓ CREATE TABLE IF NOT EXISTS orders
+  ✓ CREATE TABLE IF NOT EXISTS order_items
+  ✓ CREATE TABLE IF NOT EXISTS employees
+  ✓ CREATE TABLE IF NOT EXISTS settings
+
+✅ Database initialized successfully!
+```
+
+No more "Unknown column 'key_name'" error!
+
+## Related Files
+
+- `backend/database.sql` - Alternative SQL schema (matches the corrected initDatabase.js)
+- `backend/scripts/createAdmin.js` - Script to create admin user
+- `backend/server.js` - Express server configuration
+- `.env` - Environment variables (must be created in project root)
+
+## Windows PowerShell Commands
+
+```powershell
+# Navigate to project
+cd C:\Users\ADMIN\Desktop\restuarant
+
+# Create .env file (if not exists)
+# Then edit it with your MySQL password
+
+# Run database initialization
+cd backend
+node scripts/initDatabase.js
+
+# Create admin user
+node scripts/createAdmin.js
+
+# Start backend
+npm start
+
+# In another PowerShell window, start frontend
+cd ..
+npx next dev
+```
+
+## Production Deployment
+
+Before deploying:
+1. Update DB credentials in `.env`
+2. Change JWT_SECRET to a secure value
+3. Update restaurant settings in database:
+   ```sql
+   UPDATE settings SET setting_value = 'Your Restaurant Name' WHERE setting_key = 'restaurant_name';
+   UPDATE settings SET setting_value = 'Your Phone' WHERE setting_key = 'restaurant_phone';
+   ```
+4. Backup database regularly
+5. Use environment variables for sensitive data
