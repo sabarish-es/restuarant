@@ -22,14 +22,31 @@ export default function CashierPage() {
   const [selectedTable, setSelectedTable] = useState<any>(null);
   const [showTableModal, setShowTableModal] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Check auth first
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+
+    if (!token || !user) {
+      console.log('[v0] No auth token found, redirecting to login');
+      router.push('/');
+      return;
+    }
+
+    setIsAuthorized(true);
+    setMounted(true);
+
+    // Then load data
     fetchCategories();
     fetchTables();
+    
     // Update time every second
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [router]);
 
   const fetchTables = async () => {
     const token = localStorage.getItem('token');
@@ -267,6 +284,17 @@ export default function CashierPage() {
     localStorage.removeItem('user');
     router.push('/');
   };
+
+  // Check if not authorized or not mounted
+  if (!mounted || !isAuthorized) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Table Selection Modal
   if (showTableModal && !selectedTable) {
