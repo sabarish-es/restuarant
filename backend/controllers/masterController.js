@@ -7,7 +7,7 @@ exports.getTables = async (req, res) => {
   try {
     connection = await pool.getConnection();
     console.log('[v0] Fetching tables...');
-    const [tables] = await connection.execute('SELECT * FROM restaurant_tables ORDER BY table_number');
+    const [tables] = await connection.execute('SELECT * FROM tables ORDER BY table_number');
     console.log('[v0] Tables fetched:', tables.length);
     connection.release();
     res.json(tables);
@@ -32,7 +32,7 @@ exports.updateTableStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const connection = await pool.getConnection();
-    await connection.execute('UPDATE restaurant_tables SET status = ? WHERE id = ?', [status, id]);
+    await connection.execute('UPDATE tables SET status = ? WHERE id = ?', [status, id]);
     connection.release();
     res.json({ message: 'Table status updated' });
   } catch (error) {
@@ -115,7 +115,8 @@ exports.getEmployees = async (req, res) => {
   try {
     connection = await pool.getConnection();
     const [employees] = await connection.execute(`
-      SELECT e.*, u.username, u.email, u.role 
+      SELECT e.id, e.first_name, e.last_name, e.phone, e.hire_date, e.status,
+             u.id as user_id, u.username, u.email, u.role
       FROM employees e 
       JOIN users u ON e.user_id = u.id 
       ORDER BY e.first_name
