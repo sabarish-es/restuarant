@@ -17,6 +17,7 @@ export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({ 
     name: '', 
@@ -204,14 +205,13 @@ export default function MenuPage() {
                 {filteredItems.map((item: any) => (
                   <tr key={item.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-2 md:px-4">
-                      {item.image_url ? (
+                      {item.image_url && !failedImages.has(item.id) ? (
                         <img 
                           src={item.image_url.startsWith('http') ? item.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${item.image_url}`} 
                           alt={item.name} 
                           className="w-10 h-10 rounded object-cover" 
-                          onError={(e) => {
-                            e.currentTarget.src = ''; 
-                            e.currentTarget.parentElement?.innerHTML = '<div class="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">🍽️</div>';
+                          onError={() => {
+                            setFailedImages(prev => new Set([...prev, item.id]));
                           }}
                         />
                       ) : (
