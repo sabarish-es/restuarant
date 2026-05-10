@@ -81,10 +81,18 @@ export default function MenuPage() {
       // Add image URL if image is provided
       if (imagePreview) {
         itemData.imageUrl = imagePreview;
+        console.log('[v0] Image preview length:', imagePreview.length);
       }
 
-      console.log('[v0] Adding menu item:', itemData);
-      await menuApi.create(itemData);
+      console.log('[v0] Adding menu item:', { 
+        name: itemData.name, 
+        category: itemData.categoryId, 
+        price: itemData.price,
+        hasImage: !!itemData.imageUrl 
+      });
+      
+      const response = await menuApi.create(itemData);
+      console.log('[v0] Menu item created response:', response);
       
       // Reset form and clear file input
       setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
@@ -98,7 +106,7 @@ export default function MenuPage() {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to add item';
       alert(`Error: ${errorMsg}`);
-      console.error('[v0] Failed to add item:', errorMsg);
+      console.error('[v0] Failed to add item:', errorMsg, error);
     }
   };
 
@@ -197,7 +205,15 @@ export default function MenuPage() {
                   <tr key={item.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-2 md:px-4">
                       {item.image_url ? (
-                        <img src={`${process.env.NEXT_PUBLIC_API_URL}${item.image_url}`} alt={item.name} className="w-10 h-10 rounded object-cover" />
+                        <img 
+                          src={item.image_url.startsWith('http') ? item.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${item.image_url}`} 
+                          alt={item.name} 
+                          className="w-10 h-10 rounded object-cover" 
+                          onError={(e) => {
+                            e.currentTarget.src = ''; 
+                            e.currentTarget.parentElement?.innerHTML = '<div class="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">🍽️</div>';
+                          }}
+                        />
                       ) : (
                         <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">🍽️</div>
                       )}

@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     
     setMounted(true);
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
