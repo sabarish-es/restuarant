@@ -264,17 +264,27 @@ exports.deleteMenuItem = async (req, res) => {
       return res.status(404).json({ message: 'Menu item not found' });
     }
     
-    // First, delete all related order items that reference this menu item
+    // First, find all order items that reference this menu item
+    const [orderItems] = await connection.execute(
+      'SELECT DISTINCT order_id FROM order_items WHERE menu_item_id = ?',
+      [id]
+    );
+    
+    // Delete order items that reference this menu item
     await connection.execute(
       'DELETE FROM order_items WHERE menu_item_id = ?',
       [id]
     );
+    
+    console.log(`[v0] Deleted ${orderItems.length} order items for menu item ${id}`);
     
     // Then delete the menu item
     const deleteResult = await connection.execute(
       'DELETE FROM menu_items WHERE id = ?',
       [id]
     );
+    
+    console.log(`[v0] Menu item ${id} deleted successfully`);
     
     connection.release();
     
