@@ -131,7 +131,8 @@ export default function EmployeeActivitiesPage() {
       return;
     }
 
-    printWindow.document.write(`
+    const billContent = billRef.current.innerHTML;
+    const htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -143,10 +144,12 @@ export default function EmployeeActivitiesPage() {
           </style>
         </head>
         <body onload="window.print()">
-          ${billRef.current.innerHTML}
+          ${billContent}
         </body>
       </html>
-    `);
+    `;
+    
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
 
