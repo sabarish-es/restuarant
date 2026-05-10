@@ -90,6 +90,7 @@ exports.createOrder = async (req, res) => {
       message: 'Order created successfully',
       order: {
         id: orderId,
+        orderNumber: orderId,
         totalAmount,
         status: 'pending',
       },
