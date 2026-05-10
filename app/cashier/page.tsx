@@ -477,8 +477,9 @@ export default function CashierPage() {
                           e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
                         }}
                       />
-                    ) : null}
-                    <span className={`absolute ${item.image_url ? 'hidden' : ''}`}>🍽️</span>
+                    ) : (
+                      <span className="text-4xl">🍽️</span>
+                    )}
                   </div>
                   <div className="p-2">
                     <h3 className="font-semibold text-xs truncate">{item.name}</h3>

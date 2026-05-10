@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   table_id INT,
   customer_id INT,
-  user_id INT NOT NULL,
+  user_id INT,
   order_status ENUM('pending', 'preparing', 'ready', 'served', 'completed', 'cancelled') DEFAULT 'pending',
   total_amount DECIMAL(10, 2),
   payment_status ENUM('pending', 'paid', 'failed') DEFAULT 'pending',
