@@ -6,11 +6,7 @@ exports.createOrder = async (req, res) => {
     const { tableId, customerId, items, orderType, notes } = req.body;
     const userId = req.user?.id;
 
-    console.log('[v0] Creating order with data:', { tableId, customerId, itemCount: items?.length, orderType });
-
-    if (!userId) {
-      return res.status(401).json({ message: 'User information not found. Please login again.' });
-    }
+    console.log('[v0] Creating order with data:', { tableId, customerId, itemCount: items?.length, orderType, userId });
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No items in order.' });
@@ -55,28 +51,12 @@ exports.createOrder = async (req, res) => {
     console.log('[v0] Order totals:', { subtotal, taxRate, totalAmount });
 
     // Insert order
-    let orderResult;
-    try {
-      [orderResult] = await connection.execute(
-        `INSERT INTO orders 
-         (table_id, customer_id, user_id, order_status, total_amount, notes) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [tableId || null, customerId || null, userId, 'pending', totalAmount, notes || null]
-      );
-    } catch (insertError) {
-      // If user_id column doesn't exist, insert without it
-      if (insertError.message.includes('Unknown column') && insertError.message.includes('user_id')) {
-        console.log('[v0] user_id column not found, inserting without user_id');
-        [orderResult] = await connection.execute(
-          `INSERT INTO orders 
-           (table_id, customer_id, order_status, total_amount, notes) 
-           VALUES (?, ?, ?, ?, ?)`,
-          [tableId || null, customerId || null, 'pending', totalAmount, notes || null]
-        );
-      } else {
-        throw insertError;
-      }
-    }
+    const [orderResult] = await connection.execute(
+      `INSERT INTO orders 
+       (table_id, customer_id, user_id, order_status, total_amount, notes) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [tableId || null, customerId || null, userId || null, 'pending', totalAmount, notes || null]
+    );
 
     const orderId = orderResult.insertId;
     console.log('[v0] Order created with ID:', orderId);
