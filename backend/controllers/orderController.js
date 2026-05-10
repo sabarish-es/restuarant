@@ -4,11 +4,11 @@ exports.createOrder = async (req, res) => {
   let connection = null;
   try {
     const { tableId, customerId, items, orderType, notes } = req.body;
-    const cashierId = req.user?.id;
+    const userId = req.user?.id;
 
     console.log('[v0] Creating order with data:', { tableId, customerId, itemCount: items?.length, orderType });
 
-    if (!cashierId) {
+    if (!userId) {
       return res.status(401).json({ message: 'User information not found. Please login again.' });
     }
 
@@ -18,12 +18,9 @@ exports.createOrder = async (req, res) => {
 
     connection = await pool.getConnection();
 
-    // Generate order number
-    const orderNumber = 'ORD' + Date.now();
-
-    // Get settings for tax
-    const [settings] = await connection.execute('SELECT tax_percentage FROM settings LIMIT 1');
-    const taxPercentage = settings[0]?.tax_percentage || 5;
+    // Get settings for tax rate
+    const [settings] = await connection.execute("SELECT setting_value FROM settings WHERE setting_key = 'tax_rate' LIMIT 1");
+    const taxRate = parseFloat(settings[0]?.setting_value) || 0.05;
 
     // Validate and fetch menu prices if missing
     const itemsWithPrices = [];
@@ -47,23 +44,22 @@ exports.createOrder = async (req, res) => {
       itemsWithPrices.push({ ...item, price: itemPrice });
     }
 
-    // Calculate totals
+    // Calculate total amount (subtotal + tax)
     let subtotal = 0;
     for (const item of itemsWithPrices) {
       subtotal += item.quantity * item.price;
     }
 
-    const tax = (subtotal * taxPercentage) / 100;
-    const total = subtotal + tax;
+    const totalAmount = subtotal + (subtotal * taxRate);
 
-    console.log('[v0] Order totals:', { subtotal, tax, total });
+    console.log('[v0] Order totals:', { subtotal, taxRate, totalAmount });
 
     // Insert order
     const [orderResult] = await connection.execute(
       `INSERT INTO orders 
-       (order_number, table_id, customer_id, cashier_id, subtotal, tax, total, status, order_type, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [orderNumber, tableId || null, customerId || null, cashierId, subtotal, tax, total, 'pending', orderType || 'dine-in', notes || null]
+       (table_id, customer_id, user_id, order_status, total_amount, notes) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [tableId || null, customerId || null, userId, 'pending', totalAmount, notes || null]
     );
 
     const orderId = orderResult.insertId;
@@ -71,16 +67,17 @@ exports.createOrder = async (req, res) => {
 
     // Insert order items
     for (const item of itemsWithPrices) {
+      const itemTotal = item.quantity * item.price;
       await connection.execute(
-        `INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) VALUES (?, ?, ?, ?)`,
-        [orderId, item.menuItemId, item.quantity, item.price]
+        `INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)`,
+        [orderId, item.menuItemId, item.quantity, item.price, itemTotal]
       );
     }
 
     console.log('[v0] Order items inserted');
 
-    // Update table status if dine-in
-    if (tableId && orderType !== 'takeaway') {
+    // Update table status if table is selected
+    if (tableId) {
       await connection.execute(
         'UPDATE tables SET status = ? WHERE id = ?',
         ['occupied', tableId]
@@ -93,10 +90,7 @@ exports.createOrder = async (req, res) => {
       message: 'Order created successfully',
       order: {
         id: orderId,
-        orderNumber,
-        subtotal,
-        tax,
-        total,
+        totalAmount,
         status: 'pending',
       },
     };
@@ -125,17 +119,17 @@ exports.getOrders = async (req, res) => {
       SELECT o.*, 
              c.name as customer_name,
              rt.table_number,
-             u.username as cashier_name
+             u.username as user_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN tables rt ON o.table_id = rt.id
-      LEFT JOIN users u ON o.cashier_id = u.id
+      LEFT JOIN users u ON o.user_id = u.id
     `;
 
     const params = [];
 
     if (status) {
-      query += ' WHERE o.status = ?';
+      query += ' WHERE o.order_status = ?';
       params.push(status);
     }
 
@@ -196,15 +190,13 @@ exports.updateOrderStatus = async (req, res) => {
 
     const connection = await pool.getConnection();
 
-    const completedAt = status === 'completed' ? new Date() : null;
-
     await connection.execute(
-      'UPDATE orders SET status = ?, completed_at = ? WHERE id = ?',
-      [status, completedAt, id]
+      'UPDATE orders SET order_status = ? WHERE id = ?',
+      [status, id]
     );
 
     // If order is completed, update table status to available
-    if (status === 'completed') {
+    if (status === 'completed' || status === 'served') {
       const [order] = await connection.execute(
         'SELECT table_id FROM orders WHERE id = ?',
         [id]
@@ -233,11 +225,11 @@ exports.getKitchenOrders = async (req, res) => {
     const [orders] = await connection.execute(`
       SELECT o.*, 
              rt.table_number,
-             u.username as cashier_name
+             u.username as user_name
       FROM orders o
       LEFT JOIN tables rt ON o.table_id = rt.id
-      LEFT JOIN users u ON o.cashier_id = u.id
-      WHERE o.status IN ('pending', 'preparing', 'ready')
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.order_status IN ('pending', 'preparing', 'ready')
       ORDER BY o.created_at ASC
     `);
 
@@ -299,7 +291,7 @@ exports.printBill = async (req, res) => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Bill #${order.orderNumber}</title>
+        <title>Bill #${order.id}</title>
         <style>
           * { margin: 0; padding: 0; }
           body { font-family: Arial, sans-serif; padding: 10px; }
@@ -334,7 +326,7 @@ exports.printBill = async (req, res) => {
           </div>
           
           <div class="order-info">
-            <p><strong>Order #:</strong> ${order.orderNumber}</p>
+            <p><strong>Order #:</strong> ${order.id}</p>
             <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('en-IN')}</p>
             <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleTimeString('en-IN')}</p>
             ${order.table_number ? `<p><strong>Table:</strong> ${order.table_number}</p>` : ''}
@@ -353,7 +345,7 @@ exports.printBill = async (req, res) => {
               <div class="item">
                 <div class="item-name">${item.menu_item_name}</div>
                 <div class="item-qty">${item.quantity}</div>
-                <div class="item-price">₹${(item.unit_price * item.quantity).toFixed(2)}</div>
+                <div class="item-price">₹${item.total_price.toFixed(2)}</div>
               </div>
             `).join('')}
           </div>
@@ -361,17 +353,9 @@ exports.printBill = async (req, res) => {
           <div class="divider"></div>
           
           <div class="totals">
-            <div class="total-line">
-              <span>Subtotal:</span>
-              <span>₹${order.subtotal.toFixed(2)}</span>
-            </div>
-            <div class="total-line">
-              <span>Tax (${((order.tax / order.subtotal) * 100).toFixed(1)}%):</span>
-              <span>₹${order.tax.toFixed(2)}</span>
-            </div>
             <div class="total-line grand">
               <span>Total Amount:</span>
-              <span>₹${order.total.toFixed(2)}</span>
+              <span>₹${order.total_amount.toFixed(2)}</span>
             </div>
           </div>
           
@@ -388,10 +372,7 @@ exports.printBill = async (req, res) => {
       billHTML,
       order: {
         id: order.id,
-        orderNumber: order.orderNumber,
-        subtotal: order.subtotal,
-        tax: order.tax,
-        total: order.total,
+        totalAmount: order.total_amount,
       }
     });
   } catch (error) {
