@@ -160,8 +160,8 @@ exports.createEmployee = async (req, res) => {
 
     // Create employee
     const [empResult] = await connection.execute(
-      'INSERT INTO employees (user_id, first_name, last_name, position, phone, hire_date) VALUES (?, ?, ?, ?, ?, ?)',
-      [userResult.insertId, first_name, last_name, role || 'cashier', phone || null, hire_date || new Date().toISOString().split('T')[0]]
+      'INSERT INTO employees (user_id, first_name, last_name, position, hire_date) VALUES (?, ?, ?, ?, ?)',
+      [userResult.insertId, first_name, last_name, role || 'cashier', hire_date || new Date().toISOString().split('T')[0]]
     );
     console.log('[v0] Employee created with ID:', empResult.insertId);
 

@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS employees (
   user_id INT NOT NULL UNIQUE,
   first_name VARCHAR(100),
   last_name VARCHAR(100),
+  phone VARCHAR(20),
   position VARCHAR(100),
   salary DECIMAL(10, 2),
   hire_date DATE,
