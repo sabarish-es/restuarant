@@ -259,31 +259,53 @@ export default function CashierPage() {
     }
 
     try {
+      console.log('[v0] Fetching bill for order:', orderId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}/print`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log('[v0] Bill response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[v0] Bill data received:', data);
         const billHTML = data.billHTML;
+
+        if (!billHTML) {
+          console.error('[v0] No billHTML in response');
+          alert(`Order #${orderNumber} created, but bill data is missing.`);
+          return;
+        }
 
         // Open print window
         const printWindow = window.open('', 'PRINT', 'height=600,width=400');
         if (printWindow) {
-          printWindow.document.write(billHTML);
-          printWindow.document.close();
-          printWindow.focus();
-          
-          // Trigger print dialog after content loads
-          setTimeout(() => {
-            printWindow.print();
-          }, 250);
+          try {
+            printWindow.document.write(billHTML);
+            printWindow.document.close();
+            printWindow.focus();
+            
+            // Trigger print dialog after content loads
+            setTimeout(() => {
+              try {
+                printWindow.print();
+              } catch (printError) {
+                console.error('[v0] Print failed:', printError);
+              }
+            }, 250);
+            
+            console.log('[v0] Bill printed successfully for order:', orderNumber);
+          } catch (writeError) {
+            console.error('[v0] Failed to write to print window:', writeError);
+            alert(`Bill generation failed: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
+          }
+        } else {
+          alert('Unable to open print window. Please check your browser popup settings.');
         }
-        
-        alert(`Order #${orderNumber} created successfully!`);
       } else {
-        console.error('[v0] Failed to fetch bill:', response.status);
-        alert(`Order #${orderNumber} created, but bill print failed. Please retry from admin panel.`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[v0] Failed to fetch bill:', { status: response.status, data: errorData });
+        alert(`Order #${orderNumber} created, but bill print failed. Error: ${errorData?.message || response.statusText}`);
       }
     } catch (error) {
       console.error('[v0] Failed to print bill:', error);
@@ -443,7 +465,7 @@ export default function CashierPage() {
                   onClick={() => addToOrder(item)}
                   className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden w-full h-40"
                 >
-                  <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden">
+                  <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative">
                     {item.image_url ? (
                       <img 
                         src={`${process.env.NEXT_PUBLIC_API_URL}${item.image_url}`} 
@@ -452,16 +474,11 @@ export default function CashierPage() {
                         onError={(e) => {
                           console.log('[v0] Image load error for:', item.image_url);
                           e.currentTarget.style.display = 'none';
-                          if (e.currentTarget.parentElement) {
-                            const span = document.createElement('span');
-                            span.textContent = '🍽️';
-                            e.currentTarget.parentElement.style.display = 'flex';
-                          }
+                          e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
                         }}
                       />
-                    ) : (
-                      <span>🍽️</span>
-                    )}
+                    ) : null}
+                    <span className={`absolute ${item.image_url ? 'hidden' : ''}`}>🍽️</span>
                   </div>
                   <div className="p-2">
                     <h3 className="font-semibold text-xs truncate">{item.name}</h3>

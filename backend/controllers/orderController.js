@@ -258,6 +258,7 @@ exports.getKitchenOrders = async (req, res) => {
 exports.printBill = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('[v0] Print bill request for order:', id);
     const connection = await pool.getConnection();
 
     const [orders] = await connection.execute(
@@ -268,6 +269,8 @@ exports.printBill = async (req, res) => {
        WHERE o.id = ?`,
       [id]
     );
+    
+    console.log('[v0] Orders found:', orders.length);
 
     if (orders.length === 0) {
       connection.release();
@@ -282,9 +285,12 @@ exports.printBill = async (req, res) => {
       [id]
     );
 
+    console.log('[v0] Order items found:', items.length);
+
     connection.release();
 
     const order = orders[0];
+    console.log('[v0] Order data:', { id: order.id, total: order.total_amount, items: items.length });
     
     // Generate bill HTML
     const billHTML = `
@@ -369,6 +375,7 @@ exports.printBill = async (req, res) => {
       </html>
     `;
 
+    console.log('[v0] Sending bill response for order:', id);
     res.json({ 
       billHTML,
       order: {
@@ -377,6 +384,7 @@ exports.printBill = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('[v0] Error in printBill:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
