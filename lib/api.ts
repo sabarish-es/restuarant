@@ -45,17 +45,17 @@ export async function apiCall(
       console.error('[v0] Error parsing error response:', e);
     }
     
-    // Only logout on 401 if we have a valid token that's actually expired
+    // Only logout on 401 for non-admin routes (admin layout handles its own redirect)
     if (response.status === 401 && typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
-      if (token) {
+      const currentPath = window.location.pathname;
+      
+      // Only auto-logout if not already on admin or login page
+      if (token && !currentPath.startsWith('/admin') && currentPath !== '/') {
         console.log('[v0] Token invalid, clearing auth');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Only redirect if not already on login page
-        if (window.location.pathname !== '/') {
-          window.location.href = '/';
-        }
+        window.location.href = '/';
       }
     }
     
@@ -117,7 +117,7 @@ export const categoryApi = {
 export const menuApi = {
   getAll: (categoryId?: number) => {
     const query = categoryId ? `?categoryId=${categoryId}` : '';
-    return apiCall(`/menu-items${query}`, { requiresAuth: false });
+    return apiCall(`/menu-items${query}`, { requiresAuth: true });
   },
 
   create: (data: any) =>
