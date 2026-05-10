@@ -72,6 +72,42 @@ app.get('/api/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Error handling
+server.on('error', (err) => {
+  console.error('[v0] Server error:', err);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[v0] SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('[v0] Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('[v0] SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('[v0] Server closed');
+    process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('[v0] Uncaught exception:', err);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[v0] Unhandled rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });

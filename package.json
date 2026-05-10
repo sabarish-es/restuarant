@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run backend\" \"next dev\"",
+    "dev": "concurrently -k \"npm run backend\" \"next dev\"",
     "backend": "node backend/server.js",
     "build": "next build",
     "start": "next start",
