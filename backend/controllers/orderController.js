@@ -111,10 +111,10 @@ exports.createOrder = async (req, res) => {
 exports.getOrders = async (req, res) => {
   let connection = null;
   try {
-    const { status, limit = 50, offset = 0 } = req.query;
+    const { status } = req.query;
     connection = await pool.getConnection();
 
-    console.log('[v0] Fetching orders with filters:', { status, limit, offset });
+    console.log('[v0] Fetching orders with filters:', { status });
 
     let query = `
       SELECT o.id, o.table_id, o.customer_id, o.cashier_id, o.order_type, o.status, 
@@ -135,8 +135,7 @@ exports.getOrders = async (req, res) => {
       params.push(status);
     }
 
-    query += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    query += ' ORDER BY o.created_at DESC';
 
     console.log('[v0] Executing query:', query.substring(0, 100) + '...');
     const [orders] = await connection.execute(query, params);
