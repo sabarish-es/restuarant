@@ -31,7 +31,6 @@ export default function CashierPage() {
     const user = localStorage.getItem('user');
 
     if (!token || !user) {
-      console.log('[v0] No auth token found, redirecting to login');
       router.push('/');
       return;
     }
@@ -80,7 +79,6 @@ export default function CashierPage() {
       );
       if (response.ok) {
         const data = await response.json();
-        console.log('[v0] Fetched menu items:', data);
         setItems(data);
       }
     } catch (error) {
@@ -115,10 +113,7 @@ export default function CashierPage() {
       );
       if (response.ok) {
         const data = await response.json();
-        console.log('[v0] Fetched items for category', categoryId, ':', data);
         setItems(data);
-      } else {
-        console.error('[v0] Failed to fetch items, status:', response.status);
       }
     } catch (error) {
       console.error('[v0] Failed to fetch items', error);
@@ -164,8 +159,6 @@ export default function CashierPage() {
   );
 
   const handleCheckout = async () => {
-    console.log('[v0] Checkout started', { currentOrder, selectedTable, paymentMethod });
-    
     if (currentOrder.length === 0) {
       alert('Please add items to the order');
       return;
@@ -188,8 +181,6 @@ export default function CashierPage() {
         orderType: selectedTable ? 'dine-in' : 'takeaway',
       };
 
-      console.log('[v0] Sending order payload:', orderPayload);
-
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
         method: 'POST',
         headers: {
@@ -198,9 +189,6 @@ export default function CashierPage() {
         },
         body: JSON.stringify(orderPayload),
       });
-
-      console.log('[v0] Response status:', response.status);
-      console.log('[v0] Response content-type:', response.headers.get('content-type'));
       
       let responseData = {};
       try {
@@ -209,21 +197,16 @@ export default function CashierPage() {
           responseData = await response.json();
         } else {
           const text = await response.text();
-          console.error('[v0] Non-JSON response:', text);
           responseData = { message: 'Invalid response format from server' };
         }
       } catch (parseError) {
-        console.error('[v0] Failed to parse response:', parseError);
         responseData = { message: 'Failed to parse server response' };
       }
-      
-      console.log('[v0] Response data:', JSON.stringify(responseData));
 
       if (response.ok) {
         const orderId = responseData.order?.id;
         const orderNumber = responseData.order?.orderNumber || 'N/A';
         
-        console.log('[v0] Order created successfully:', { orderId, orderNumber });
         alert(`Order #${orderNumber} created successfully!`);
         
         // Print the bill after successful order creation
@@ -238,15 +221,9 @@ export default function CashierPage() {
         setPaymentMethod('cash');
       } else {
         const errorMsg = responseData?.message || responseData?.error || `Server error (${response.status})`;
-        console.error('[v0] Order creation failed:', { 
-          status: response.status, 
-          message: errorMsg, 
-          data: responseData 
-        });
         alert(`Failed to create order: ${errorMsg}`);
       }
     } catch (error) {
-      console.error('[v0] Failed to create order:', error);
       alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -259,20 +236,15 @@ export default function CashierPage() {
     }
 
     try {
-      console.log('[v0] Fetching bill for order:', orderId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}/print`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log('[v0] Bill response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[v0] Bill data received:', data);
         const billHTML = data.billHTML;
 
         if (!billHTML) {
-          console.error('[v0] No billHTML in response');
           alert(`Order #${orderNumber} created, but bill data is missing.`);
           return;
         }
@@ -290,13 +262,10 @@ export default function CashierPage() {
               try {
                 printWindow.print();
               } catch (printError) {
-                console.error('[v0] Print failed:', printError);
+                // Silently handle print errors
               }
             }, 250);
-            
-            console.log('[v0] Bill printed successfully for order:', orderNumber);
           } catch (writeError) {
-            console.error('[v0] Failed to write to print window:', writeError);
             alert(`Bill generation failed: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
           }
         } else {
@@ -304,11 +273,9 @@ export default function CashierPage() {
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error('[v0] Failed to fetch bill:', { status: response.status, data: errorData });
         alert(`Order #${orderNumber} created, but bill print failed. Error: ${errorData?.message || response.statusText}`);
       }
     } catch (error) {
-      console.error('[v0] Failed to print bill:', error);
       alert(`Order created but print failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -468,11 +435,10 @@ export default function CashierPage() {
                   <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative">
                     {item.image_url ? (
                       <img 
-                        src={`${process.env.NEXT_PUBLIC_API_URL}${item.image_url}`} 
+                        src={`http://localhost:3001${item.image_url}`} 
                         alt={item.name} 
                         className="w-full h-full object-cover" 
                         onError={(e) => {
-                          console.log('[v0] Image load error for:', item.image_url);
                           e.currentTarget.style.display = 'none';
                           e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
                         }}
