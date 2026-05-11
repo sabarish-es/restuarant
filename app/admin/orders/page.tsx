@@ -1,39 +1,60 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Eye } from 'lucide-react';
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/');
+      return;
+    }
     fetchOrders();
-  }, [statusFilter]);
+  }, [statusFilter, router]);
 
   const fetchOrders = async () => {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
+    
+    if (!token) {
+      setError('Authentication required. Please login again.');
+      setLoading(false);
+      return;
+    }
+
     try {
       let url = `${process.env.NEXT_PUBLIC_API_URL}/orders`;
       if (statusFilter) url += `?status=${statusFilter}`;
 
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
-        setOrders(data || []);
+        setOrders(Array.isArray(data) ? data : []);
+      } else if (response.status === 401) {
+        setError('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        router.push('/');
       } else {
-        const errorData = await response.json();
-        const errorMsg = errorData.message || 'Failed to fetch orders';
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.message || `Server error (${response.status})`;
         setError(errorMsg);
       }
     } catch (error) {

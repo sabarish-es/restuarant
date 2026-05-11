@@ -114,8 +114,6 @@ exports.getOrders = async (req, res) => {
     const { status } = req.query;
     connection = await pool.getConnection();
 
-    console.log('[v0] Fetching orders with filters:', { status });
-
     let query = `
       SELECT o.id, o.table_id, o.customer_id, o.cashier_id, o.order_type, o.status, 
              o.subtotal, o.tax, o.total, o.notes, o.created_at, o.updated_at,
@@ -137,11 +135,9 @@ exports.getOrders = async (req, res) => {
 
     query += ' ORDER BY o.created_at DESC';
 
-    console.log('[v0] Executing query:', query.substring(0, 100) + '...');
     const [orders] = await connection.execute(query, params);
     connection.release();
 
-    console.log('[v0] Orders fetched:', orders.length);
     res.json(orders);
   } catch (error) {
     console.error('[v0] Error fetching orders:', error.message, error.code);
@@ -166,7 +162,6 @@ exports.getOrderDetails = async (req, res) => {
     }
     
     connection = await pool.getConnection();
-    console.log('[v0] Fetching order details for ID:', id);
 
     const [orders] = await connection.execute(
       `SELECT o.id, o.table_id, o.customer_id, o.cashier_id, o.order_type, o.status,
