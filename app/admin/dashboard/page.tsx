@@ -21,19 +21,22 @@ import { TrendingUp, Users, ShoppingCart, DollarSign } from 'lucide-react';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
-    totalOrders: 128,
-    totalSales: 24560,
-    customers: 96,
-    pendingOrders: 18,
+    totalOrders: 0,
+    totalSales: 0,
+    totalCustomers: 0,
+    pendingOrders: 0,
     recentOrders: [],
     salesTrend: [],
     topItems: [],
   });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true);
+      setError('');
       try {
         const token = localStorage.getItem('token');
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard-stats`, {
@@ -42,10 +45,17 @@ export default function DashboardPage() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log('[v0] Dashboard stats fetched:', data);
           setStats(data);
+        } else {
+          const errorData = await response.json();
+          setError(errorData.message || 'Failed to fetch stats');
+          console.error('[v0] Failed to fetch stats:', errorData);
         }
       } catch (error) {
-        console.error('Failed to fetch stats', error);
+        const errorMsg = error instanceof Error ? error.message : 'Failed to fetch dashboard stats';
+        setError(errorMsg);
+        console.error('[v0] Dashboard fetch error:', errorMsg);
       } finally {
         setLoading(false);
       }
@@ -88,32 +98,39 @@ export default function DashboardPage() {
         <p className="text-gray-500">Welcome back! Here&apos;s your restaurant performance.</p>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <p className="font-semibold">Error Loading Dashboard</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Orders"
-          value={stats.totalOrders}
+          value={stats.totalOrders || 0}
           icon={<ShoppingCart className="w-4 h-4 text-white" />}
           trend="Today"
           color="bg-blue-100"
         />
         <StatCard
           title="Total Sales"
-          value={`₹${(stats.totalSales).toLocaleString()}`}
+          value={`₹${(stats.totalSales || 0).toLocaleString()}`}
           icon={<DollarSign className="w-4 h-4 text-white" />}
           trend="Today"
           color="bg-green-100"
         />
         <StatCard
           title="Customers"
-          value={stats.customers}
+          value={stats.totalCustomers || 0}
           icon={<Users className="w-4 h-4 text-white" />}
           trend="Total"
           color="bg-purple-100"
         />
         <StatCard
           title="Pending Orders"
-          value={stats.pendingOrders}
+          value={stats.pendingOrders || 0}
           icon={<TrendingUp className="w-4 h-4 text-white" />}
           trend="Active"
           color="bg-orange-100"

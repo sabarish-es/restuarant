@@ -141,14 +141,15 @@ export default function MenuPage() {
         categoryId: parseInt(formData.category_id),
         price: parseFloat(formData.price),
         description: formData.description || null,
-        status: formData.status,
+        status: formData.status || 'active',
+        imageUrl: null,
       };
 
       // Add image URL if a new image is provided
       if (imagePreview && imagePreview.startsWith('data:image')) {
         itemData.imageUrl = imagePreview;
         console.log('[v0] Image updated for menu item');
-      } else if (imagePreview) {
+      } else if (imagePreview && !imagePreview.startsWith('data:')) {
         itemData.imageUrl = imagePreview;
       }
 
@@ -157,6 +158,8 @@ export default function MenuPage() {
         name: itemData.name, 
         category: itemData.categoryId, 
         price: itemData.price,
+        description: itemData.description,
+        imageUrl: itemData.imageUrl ? 'provided' : 'null',
       });
       
       await menuApi.update(editingItemId, itemData);

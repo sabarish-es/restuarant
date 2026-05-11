@@ -67,14 +67,42 @@ exports.updateCategory = async (req, res) => {
 };
 
 exports.deleteCategory = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
-    const connection = await pool.getConnection();
-    await connection.execute('DELETE FROM categories WHERE id = ?', [id]);
+    
+    if (!id) {
+      return res.status(400).json({ message: 'Category ID is required' });
+    }
+    
+    connection = await pool.getConnection();
+    
+    // Check if category has items
+    const [items] = await connection.execute('SELECT COUNT(*) as count FROM menu_items WHERE category_id = ?', [id]);
+    if (items[0].count > 0) {
+      connection.release();
+      return res.status(400).json({ message: 'Cannot delete category with existing menu items' });
+    }
+    
+    const [result] = await connection.execute('DELETE FROM categories WHERE id = ?', [id]);
     connection.release();
-    res.json({ message: 'Category deleted' });
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    
+    console.log('[v0] Category deleted:', id);
+    res.json({ message: 'Category deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error deleting category:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete category' });
   }
 };
 
@@ -222,15 +250,17 @@ exports.updateMenuItem = async (req, res) => {
       }
     }
     
+    console.log('[v0] Updating menu item:', { id, name, categoryId, price, description, status });
+    
     await connection.execute(
       'UPDATE menu_items SET name = ?, category_id = ?, price = ?, description = ?, image_url = ?, status = ? WHERE id = ?',
-      [name, categoryId, price, description, savedImageUrl, status, id]
+      [name, categoryId, price, description || null, savedImageUrl || null, status || 'active', id]
     );
     connection.release();
 
     res.json({ message: 'Menu item updated', image_url: savedImageUrl });
   } catch (error) {
-    console.error('[v0] Error updating menu item:', error.message);
+    console.error('[v0] Error updating menu item:', error.message, error.code);
     if (connection) {
       try {
         connection.release();
