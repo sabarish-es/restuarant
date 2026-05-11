@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, ShoppingCart, DollarSign } from 'lucide-react';
+import { dashboardApi } from '@/lib/api';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -38,23 +39,22 @@ export default function DashboardPage() {
       setLoading(true);
       setError('');
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard-stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[v0] Dashboard stats fetched:', data);
-          setStats(data);
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Failed to fetch stats');
-          console.error('[v0] Failed to fetch stats:', errorData);
-        }
+        console.log('[v0] Fetching dashboard stats...');
+        const data = await dashboardApi.getStats();
+        console.log('[v0] Dashboard stats fetched successfully:', data);
+        setStats(data);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Failed to fetch dashboard stats';
-        setError(errorMsg);
+        
+        // Provide helpful error message
+        let userMessage = errorMsg;
+        if (errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
+          userMessage = 'Authentication failed. Please log in again.';
+        } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+          userMessage = 'Unable to connect to backend server. Ensure it is running on port 3001.';
+        }
+        
+        setError(userMessage);
         console.error('[v0] Dashboard fetch error:', errorMsg);
       } finally {
         setLoading(false);
