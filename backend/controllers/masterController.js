@@ -261,8 +261,10 @@ exports.updateSettings = async (req, res) => {
 
 // Reports & Dashboard
 exports.getDashboardStats = async (req, res) => {
+  let connection = null;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+    console.log('[v0] Fetching dashboard stats...');
 
     // Total Orders Today
     const [totalOrders] = await connection.execute(
@@ -271,7 +273,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Total Sales Today
     const [totalSales] = await connection.execute(
-      `SELECT SUM(total) as total FROM orders WHERE DATE(created_at) = CURDATE() AND status IN ('completed', 'preparing')`
+      `SELECT COALESCE(SUM(total), 0) as total FROM orders WHERE DATE(created_at) = CURDATE() AND status IN ('completed', 'preparing')`
     );
 
     // Total Customers
@@ -286,7 +288,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Recent Orders
     const [recentOrders] = await connection.execute(
-      `SELECT o.*, c.name as customer_name, rt.table_number 
+      `SELECT o.id, o.order_number, o.total, o.status, o.created_at, o.completed_at, COALESCE(c.name, 'Walk-in') as customer_name, rt.table_number 
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
        LEFT JOIN tables rt ON o.table_id = rt.id 
@@ -296,7 +298,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Sales Trend (Last 7 days)
     const [salesTrend] = await connection.execute(
-      `SELECT DATE(created_at) as date, SUM(total) as total 
+      `SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as total 
        FROM orders 
        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) 
        AND status IN ('completed', 'preparing')
@@ -317,17 +319,28 @@ exports.getDashboardStats = async (req, res) => {
 
     connection.release();
 
-    res.json({
-      totalOrders: totalOrders[0].count,
-      totalSales: totalSales[0].total || 0,
-      totalCustomers: totalCustomers[0].count,
-      pendingOrders: pendingOrders[0].count,
-      recentOrders,
-      salesTrend,
-      topItems,
-    });
+    const stats = {
+      totalOrders: totalOrders[0]?.count || 0,
+      totalSales: totalSales[0]?.total || 0,
+      totalCustomers: totalCustomers[0]?.count || 0,
+      pendingOrders: pendingOrders[0]?.count || 0,
+      recentOrders: recentOrders || [],
+      salesTrend: salesTrend || [],
+      topItems: topItems || [],
+    };
+
+    console.log('[v0] Dashboard stats fetched:', { totalOrders: stats.totalOrders, totalSales: stats.totalSales });
+    res.json(stats);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching dashboard stats:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch dashboard stats' });
   }
 };
 
@@ -407,9 +420,16 @@ exports.getEmployeeActivities = async (req, res) => {
 };
 
 exports.getEmployeeDetails = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
-    const connection = await pool.getConnection();
+    
+    if (!id) {
+      return res.status(400).json({ message: 'Employee ID is required' });
+    }
+    
+    connection = await pool.getConnection();
+    console.log('[v0] Fetching details for employee:', id);
 
     // Get employee info
     const [employees] = await connection.execute(`
@@ -423,6 +443,8 @@ exports.getEmployeeDetails = async (req, res) => {
       connection.release();
       return res.status(404).json({ message: 'Employee not found' });
     }
+
+    console.log('[v0] Employee found:', employees[0].username);
 
     // Get employee's orders
     const [orders] = await connection.execute(`
@@ -438,9 +460,17 @@ exports.getEmployeeDetails = async (req, res) => {
 
     res.json({
       employee: employees[0],
-      orders,
+      orders: orders || [],
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching employee details:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch employee details' });
   }
 };
