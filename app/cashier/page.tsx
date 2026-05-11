@@ -178,7 +178,7 @@ export default function CashierPage() {
           price: item.price
         })),
         tableId: selectedTable?.id || null,
-        orderType: selectedTable ? 'dine-in' : 'takeaway',
+        orderType: selectedTable?.id ? 'dine-in' : 'takeaway',
       };
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
@@ -432,15 +432,23 @@ export default function CashierPage() {
                   onClick={() => addToOrder(item)}
                   className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden w-full h-40"
                 >
-                  <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative">
+                  <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group">
                     {item.image_url ? (
                       <img 
-                        src={`http://localhost:3001${item.image_url}`} 
+                        src={item.image_url.startsWith('http') ? item.image_url : `http://localhost:3001${item.image_url}`} 
                         alt={item.name} 
-                        className="w-full h-full object-cover" 
+                        className="w-full h-full object-cover transition-opacity group-hover:opacity-90" 
+                        loading="lazy"
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('span');
+                            fallback.className = 'text-4xl';
+                            fallback.textContent = '🍽️';
+                            parent.innerHTML = '';
+                            parent.appendChild(fallback);
+                          }
                         }}
                       />
                     ) : (

@@ -311,10 +311,11 @@ exports.printBill = async (req, res) => {
     const connection = await pool.getConnection();
 
     const [orders] = await connection.execute(
-      `SELECT o.*, c.name as customer_name, c.phone as customer_phone, rt.table_number 
+      `SELECT o.*, c.name as customer_name, c.phone as customer_phone, rt.table_number, u.username as cashier_name
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
        LEFT JOIN tables rt ON o.table_id = rt.id 
+       LEFT JOIN users u ON o.cashier_id = u.id
        WHERE o.id = ?`,
       [id]
     );
@@ -390,8 +391,12 @@ exports.printBill = async (req, res) => {
             <p><strong>Order #:</strong> ${order.id}</p>
             <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('en-IN')}</p>
             <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleTimeString('en-IN')}</p>
-            ${order.table_number ? `<p><strong>Table:</strong> ${order.table_number}</p>` : ''}
+            <p><strong>Type:</strong> ${order.order_type ? (order.order_type === 'dine-in' ? 'Dine In' : 'Takeaway') : 'Dine In'}</p>
+            ${order.table_number ? `<p><strong>Table #:</strong> ${order.table_number}</p>` : ''}
             ${order.customer_name ? `<p><strong>Customer:</strong> ${order.customer_name}</p>` : ''}
+            ${order.customer_phone ? `<p><strong>Phone:</strong> ${order.customer_phone}</p>` : ''}
+            ${order.cashier_name ? `<p><strong>Cashier:</strong> ${order.cashier_name}</p>` : ''}
+            ${order.notes ? `<p><strong>Special Notes:</strong> ${order.notes}</p>` : ''}
           </div>
           
           <div class="divider"></div>
@@ -423,7 +428,7 @@ exports.printBill = async (req, res) => {
               <span>₹${subtotal.toFixed(2)}</span>
             </div>
             <div class="total-line">
-              <span>Tax:</span>
+              <span>Tax (5%):</span>
               <span>₹${tax.toFixed(2)}</span>
             </div>
             <div class="total-line grand">
@@ -432,9 +437,19 @@ exports.printBill = async (req, res) => {
             </div>
           </div>
           
+          <div class="divider"></div>
+          
+          <div class="order-info" style="text-align: center; font-size: 11px; margin-top: 10px;">
+            <p><strong>Status:</strong> ${order.status ? order.status.toUpperCase() : 'PENDING'}</p>
+            <p style="margin-top: 8px; font-size: 10px; color: #999;">
+              Bill Generated: ${new Date().toLocaleString('en-IN')}
+            </p>
+          </div>
+          
           <div class="thank-you">Thank You!</div>
           <div class="footer">
             <p>Please come again</p>
+            <p style="margin-top: 5px; font-size: 10px;">Powered by FoodieHub v1.0</p>
           </div>
         </div>
       </body>
