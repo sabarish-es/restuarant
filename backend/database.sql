@@ -52,7 +52,7 @@ CREATE TABLE menu_items (
   category_id INT NOT NULL,
   price DECIMAL(10, 2) NOT NULL,
   description TEXT,
-  image_url VARCHAR(255),
+  image_url LONGTEXT,
   status ENUM('active', 'inactive') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

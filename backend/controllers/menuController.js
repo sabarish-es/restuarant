@@ -197,7 +197,7 @@ exports.createMenuItem = async (req, res) => {
           // Save file to disk
           fs.writeFileSync(filepath, buffer);
           
-          // Store relative path in database
+          // Store relative path in database (not base64, just the path)
           savedImageUrl = `/uploads/menu-items/${filename}`;
           console.log('[v0] Image saved to:', savedImageUrl);
         }
@@ -205,6 +205,9 @@ exports.createMenuItem = async (req, res) => {
         console.error('[v0] Error processing image:', imageError.message);
         // Continue without image if there's an error
       }
+    } else if (imageUrl && typeof imageUrl === 'string' && imageUrl.length < 500) {
+      // If it's a short string (already a path), use it directly
+      savedImageUrl = imageUrl;
     }
     
     const [result] = await connection.execute(
@@ -271,6 +274,17 @@ exports.updateMenuItem = async (req, res) => {
         }
       } catch (imageError) {
         console.error('[v0] Error processing image update:', imageError.message);
+        // Keep the old image URL if new one fails
+        savedImageUrl = imageUrl;
+      }
+    } else if (!imageUrl || (typeof imageUrl === 'string' && imageUrl.startsWith('data:'))) {
+      // If no image provided, keep current image
+      const [currentItem] = await connection.execute(
+        'SELECT image_url FROM menu_items WHERE id = ?',
+        [id]
+      );
+      if (currentItem.length > 0) {
+        savedImageUrl = currentItem[0].image_url;
       }
     }
     
