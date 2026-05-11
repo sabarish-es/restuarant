@@ -1,182 +1,61 @@
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config({ path: '.env' });
-
-const SQL_STATEMENTS = `
--- Create users table
-CREATE TABLE IF NOT EXISTS users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(100) UNIQUE NOT NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'cashier', 'kitchen', 'manager') NOT NULL DEFAULT 'cashier',
-  phone VARCHAR(20),
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_username (username),
-  INDEX idx_email (email),
-  INDEX idx_role (role)
-);
-
--- Create categories table
-CREATE TABLE IF NOT EXISTS categories (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_status (status)
-);
-
--- Create menu_items table
-CREATE TABLE IF NOT EXISTS menu_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  category_id INT NOT NULL,
-  name VARCHAR(150) NOT NULL,
-  description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  image_url VARCHAR(255),
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (category_id) REFERENCES categories(id),
-  INDEX idx_category (category_id),
-  INDEX idx_status (status)
-);
-
--- Create tables (restaurant tables)
-CREATE TABLE IF NOT EXISTS tables (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  table_number INT UNIQUE NOT NULL,
-  seats INT NOT NULL,
-  status ENUM('available', 'occupied', 'reserved') DEFAULT 'available',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_status (status)
-);
-
--- Create customers table
-CREATE TABLE IF NOT EXISTS customers (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(100),
-  phone VARCHAR(20),
-  address TEXT,
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_status (status)
-);
-
--- Create orders table
-CREATE TABLE IF NOT EXISTS orders (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  table_id INT,
-  customer_id INT,
-  user_id INT,
-  order_status ENUM('pending', 'preparing', 'ready', 'served', 'completed', 'cancelled') DEFAULT 'pending',
-  total_amount DECIMAL(10, 2),
-  payment_status ENUM('pending', 'paid', 'failed') DEFAULT 'pending',
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (table_id) REFERENCES tables(id),
-  FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  INDEX idx_status (order_status),
-  INDEX idx_payment (payment_status),
-  INDEX idx_created (created_at)
-);
-
--- Create order_items table
-CREATE TABLE IF NOT EXISTS order_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  order_id INT NOT NULL,
-  menu_item_id INT NOT NULL,
-  quantity INT NOT NULL,
-  unit_price DECIMAL(10, 2) NOT NULL,
-  total_price DECIMAL(10, 2) NOT NULL,
-  special_instructions TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
-  INDEX idx_order (order_id)
-);
-
--- Create employees table
-CREATE TABLE IF NOT EXISTS employees (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL UNIQUE,
-  first_name VARCHAR(100),
-  last_name VARCHAR(100),
-  phone VARCHAR(20),
-  position VARCHAR(100),
-  salary DECIMAL(10, 2),
-  hire_date DATE,
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  INDEX idx_status (status)
-);
-
--- Create settings table
-CREATE TABLE IF NOT EXISTS settings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  setting_key VARCHAR(100) UNIQUE NOT NULL,
-  setting_value TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_key (setting_key)
-);
-
--- Insert default settings
-INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
-('restaurant_name', 'My Restaurant'),
-('restaurant_phone', '+1234567890'),
-('currency', 'USD'),
-('tax_rate', '0.05');
-`;
 
 async function initDatabase() {
   let connection;
   try {
     console.log('\n========================================');
-    console.log('  FoodHub - Database Initialization');
+    console.log('  Restaurant - Database Initialization');
     console.log('========================================\n');
 
     const dbConfig = {
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'restaurant_management',
+      password: process.env.DB_PASSWORD || 'sabarish0227E',
       port: process.env.DB_PORT || 3306,
     };
 
-    console.log('Connecting to database...');
-    console.log(`Host: ${dbConfig.host}`);
-    console.log(`Database: ${dbConfig.database}\n`);
+    console.log('Step 1: Connecting to MySQL server...');
+    console.log(`Host: ${dbConfig.host}\n`);
 
+    // Connect without specifying database first
     connection = await mysql.createConnection(dbConfig);
+    console.log('✅ Connected to MySQL server\n');
 
-    console.log('✅ Connected to database\n');
-    console.log('Creating tables...\n');
+    // Drop existing database if it exists
+    console.log('Step 2: Preparing database...');
+    await connection.execute('DROP DATABASE IF EXISTS restaurant_management');
+    console.log('✅ Cleaned up existing database\n');
 
-    // Split statements and execute them one by one
-    const statements = SQL_STATEMENTS.split(';')
+    // Read the full schema from database.sql
+    const sqlPath = path.join(__dirname, '../database.sql');
+    const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+
+    console.log('Step 3: Creating new database and tables...');
+    
+    // Split statements and execute them
+    const statements = sqlContent
+      .split(';')
       .map((stmt) => stmt.trim())
-      .filter((stmt) => stmt.length > 0);
+      .filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'));
 
+    let tableCount = 0;
     for (const statement of statements) {
       try {
         await connection.execute(statement);
-        const tableName = statement.match(/CREATE TABLE[^(]*/i)?.[0]?.trim() || 'Table';
-        console.log(`  ✓ ${tableName}`);
+        if (statement.toUpperCase().includes('CREATE TABLE')) {
+          const tableName = statement.match(/`?(\w+)`?\s*\(/)?.[1] || 'Table';
+          console.log(`  ✓ ${tableName}`);
+          tableCount++;
+        } else if (statement.toUpperCase().includes('INSERT')) {
+          console.log(`  ✓ Data inserted`);
+        }
       } catch (error) {
-        if (error.code === 'ER_TABLE_EXISTS_ERROR') {
-          console.log(`  ℹ Table already exists`);
-        } else {
+        // Skip warnings but throw real errors
+        if (error.code !== 'ER_TABLE_EXISTS_ERROR' && error.code !== 'ER_DUP_ENTRY') {
+          console.error(`  ✗ Error executing statement:`, error.message);
           throw error;
         }
       }
@@ -186,17 +65,31 @@ async function initDatabase() {
 
     console.log('\n========================================');
     console.log('✅ Database initialized successfully!');
+    console.log(`   Created ${tableCount} tables with sample data`);
     console.log('========================================\n');
-    console.log('Next steps:');
-    console.log('1. Run: node backend/scripts/createAdmin.js');
-    console.log('2. Run: npm run dev');
+    console.log('Configuration:');
+    console.log('  Database: restaurant_management');
+    console.log('  Tables: users, categories, menu_items, tables, customers, orders, order_items, employees, settings');
+    console.log('\nNext steps:');
+    console.log('  1. Update .env with your database credentials');
+    console.log('  2. Run: npm run dev');
+    console.log('\nDefault Admin User:');
+    console.log('  Username: admin');
+    console.log('  Password: admin123');
+    console.log('  ⚠️  CHANGE THIS IN PRODUCTION!\n');
     console.log('========================================\n');
 
     process.exit(0);
   } catch (error) {
     console.log('\n❌ Error initializing database:');
-    console.log(error.message);
-    if (connection) await connection.end();
+    console.log(`   ${error.message}\n`);
+    if (connection) {
+      try {
+        await connection.end();
+      } catch (e) {
+        // ignore
+      }
+    }
     process.exit(1);
   }
 }
