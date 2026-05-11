@@ -16,6 +16,8 @@ export default function MenuPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState('');
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +110,70 @@ export default function MenuPage() {
       const errorMsg = error instanceof Error ? error.message : 'Failed to add item';
       alert(`Error: ${errorMsg}`);
       console.error('[v0] Failed to add item:', errorMsg, error);
+    }
+  };
+
+  const handleEditItem = (item: any) => {
+    setEditingItemId(item.id);
+    setFormData({
+      name: item.name,
+      category_id: item.category_id.toString(),
+      price: item.price.toString(),
+      status: item.status,
+      description: item.description || '',
+      image: null,
+    });
+    setImagePreview(item.image_url || '');
+    setShowEditModal(true);
+  };
+
+  const handleUpdateItem = async () => {
+    if (!formData.name || !formData.category_id || !formData.price) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    if (!editingItemId) return;
+
+    try {
+      const itemData: any = {
+        name: formData.name,
+        categoryId: parseInt(formData.category_id),
+        price: parseFloat(formData.price),
+        description: formData.description || null,
+        status: formData.status,
+      };
+
+      // Add image URL if a new image is provided
+      if (imagePreview && imagePreview.startsWith('data:image')) {
+        itemData.imageUrl = imagePreview;
+        console.log('[v0] Image updated for menu item');
+      } else if (imagePreview) {
+        itemData.imageUrl = imagePreview;
+      }
+
+      console.log('[v0] Updating menu item:', { 
+        id: editingItemId,
+        name: itemData.name, 
+        category: itemData.categoryId, 
+        price: itemData.price,
+      });
+      
+      await menuApi.update(editingItemId, itemData);
+      
+      setEditingItemId(null);
+      setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
+      setImagePreview('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setShowEditModal(false);
+      await fetchData();
+      alert('Item updated successfully');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to update item';
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to update item:', errorMsg, error);
     }
   };
 
@@ -227,7 +293,7 @@ export default function MenuPage() {
                       </span>
                     </td>
                     <td className="py-3 px-2 md:px-4 flex gap-1 md:gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleEditItem(item)}>
                         <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
                       </Button>
                       <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDeleteItem(item.id)}>
@@ -317,6 +383,97 @@ export default function MenuPage() {
             <Button 
               onClick={() => { 
                 setShowAddModal(false); 
+                setImagePreview('');
+                setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }} 
+              variant="outline" 
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Menu Item">
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div>
+            <label className="block text-sm font-medium mb-2">Item Name</label>
+            <Input
+              placeholder="Enter item name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Category</label>
+            <select
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={formData.category_id}
+              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+            >
+              <option value="">Select Category</option>
+              {categories.map((cat: any) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <Input
+              placeholder="Enter item description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Price (₹)</label>
+            <Input
+              type="number"
+              placeholder="Enter price"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Item Image</label>
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="text-sm"
+            />
+            {imagePreview && (
+              <div className="mt-2">
+                <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded" />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Status</label>
+            <select
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div className="flex gap-2 pt-4">
+            <Button onClick={handleUpdateItem} className="flex-1 bg-purple-600 hover:bg-purple-700">
+              Update Item
+            </Button>
+            <Button 
+              onClick={() => { 
+                setShowEditModal(false); 
+                setEditingItemId(null);
                 setImagePreview('');
                 setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
                 if (fileInputRef.current) {
