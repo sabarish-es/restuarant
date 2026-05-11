@@ -84,18 +84,9 @@ export default function MenuPage() {
       // Add image URL if image is provided
       if (imagePreview) {
         itemData.imageUrl = imagePreview;
-        console.log('[v0] Image preview length:', imagePreview.length);
       }
-
-      console.log('[v0] Adding menu item:', { 
-        name: itemData.name, 
-        category: itemData.categoryId, 
-        price: itemData.price,
-        hasImage: !!itemData.imageUrl 
-      });
       
       const response = await menuApi.create(itemData);
-      console.log('[v0] Menu item created response:', response);
       
       // Reset form and clear file input
       setFormData({ name: '', category_id: '', price: '', status: 'active', description: '', image: null });
@@ -145,23 +136,13 @@ export default function MenuPage() {
         imageUrl: null,
       };
 
-      // Add image URL if a new image is provided
+      // Add image URL only if a new image is provided and it's a fresh upload
       if (imagePreview && imagePreview.startsWith('data:image')) {
         itemData.imageUrl = imagePreview;
-        console.log('[v0] Image updated for menu item');
-      } else if (imagePreview && !imagePreview.startsWith('data:')) {
-        itemData.imageUrl = imagePreview;
+        console.log('[v0] New image provided for update');
       }
+      // If imagePreview is already a path (from existing item), don't include it to keep existing
 
-      console.log('[v0] Updating menu item:', { 
-        id: editingItemId,
-        name: itemData.name, 
-        category: itemData.categoryId, 
-        price: itemData.price,
-        description: itemData.description,
-        imageUrl: itemData.imageUrl ? 'provided' : 'null',
-      });
-      
       await menuApi.update(editingItemId, itemData);
       
       setEditingItemId(null);
