@@ -40,22 +40,23 @@ exports.createOrder = async (req, res) => {
       itemsWithPrices.push({ ...item, price: itemPrice });
     }
 
-    // Calculate total amount (subtotal + tax)
+    // Calculate totals (subtotal and tax separately)
     let subtotal = 0;
     for (const item of itemsWithPrices) {
       subtotal += item.quantity * item.price;
     }
 
-    const totalAmount = subtotal + (subtotal * taxRate);
+    const tax = parseFloat((subtotal * taxRate).toFixed(2));
+    const total = parseFloat((subtotal + tax).toFixed(2));
 
-    console.log('[v0] Order totals:', { subtotal, taxRate, totalAmount });
+    console.log('[v0] Order totals:', { subtotal, tax, taxRate, total });
 
-    // Insert order
+    // Insert order - using correct database column names
     const [orderResult] = await connection.execute(
       `INSERT INTO orders 
-       (table_id, customer_id, user_id, order_status, total_amount, notes) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [tableId || null, customerId || null, userId || null, 'pending', totalAmount, notes || null]
+       (table_id, customer_id, cashier_id, order_type, status, subtotal, tax, total, notes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tableId || null, customerId || null, userId || null, orderType || 'dine-in', 'pending', subtotal, tax, total, notes || null]
     );
 
     const orderId = orderResult.insertId;
@@ -65,8 +66,8 @@ exports.createOrder = async (req, res) => {
     for (const item of itemsWithPrices) {
       const itemTotal = item.quantity * item.price;
       await connection.execute(
-        `INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)`,
-        [orderId, item.menuItemId, item.quantity, item.price, itemTotal]
+        `INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) VALUES (?, ?, ?, ?)`,
+        [orderId, item.menuItemId, item.quantity, item.price]
       );
     }
 
@@ -87,7 +88,7 @@ exports.createOrder = async (req, res) => {
       order: {
         id: orderId,
         orderNumber: orderId,
-        totalAmount,
+        totalAmount: total,
         status: 'pending',
       },
     };
@@ -286,7 +287,8 @@ exports.printBill = async (req, res) => {
     connection.release();
 
     const order = orders[0];
-    console.log('[v0] Order data:', { id: order.id, total: order.total_amount, items: items.length });
+    const itemTotal = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+    console.log('[v0] Order data:', { id: order.id, total: order.total, items: items.length });
     
     // Generate bill HTML
     const billHTML = `
@@ -348,7 +350,7 @@ exports.printBill = async (req, res) => {
               <div class="item">
                 <div class="item-name">${item.menu_item_name}</div>
                 <div class="item-qty">${item.quantity}</div>
-                <div class="item-price">₹${item.total_price.toFixed(2)}</div>
+                <div class="item-price">₹${(item.unit_price * item.quantity).toFixed(2)}</div>
               </div>
             `).join('')}
           </div>
@@ -356,9 +358,17 @@ exports.printBill = async (req, res) => {
           <div class="divider"></div>
           
           <div class="totals">
+            <div class="total-line">
+              <span>Subtotal:</span>
+              <span>₹${order.subtotal.toFixed(2)}</span>
+            </div>
+            <div class="total-line">
+              <span>Tax:</span>
+              <span>₹${order.tax.toFixed(2)}</span>
+            </div>
             <div class="total-line grand">
               <span>Total Amount:</span>
-              <span>₹${order.total_amount.toFixed(2)}</span>
+              <span>₹${order.total.toFixed(2)}</span>
             </div>
           </div>
           
@@ -376,7 +386,7 @@ exports.printBill = async (req, res) => {
       billHTML,
       order: {
         id: order.id,
-        totalAmount: order.total_amount,
+        totalAmount: order.total,
       }
     });
   } catch (error) {
