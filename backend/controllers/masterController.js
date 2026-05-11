@@ -448,7 +448,7 @@ exports.getEmployeeDetails = async (req, res) => {
 
     // Get employee's orders
     const [orders] = await connection.execute(`
-      SELECT o.id, o.order_number, o.total, o.status, o.created_at, o.completed_at, c.name as customer_name
+      SELECT o.id, o.total, o.status, o.created_at, o.updated_at, COALESCE(c.name, 'Walk-in') as customer_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       WHERE o.cashier_id = ?
