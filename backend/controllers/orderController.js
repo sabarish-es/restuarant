@@ -121,13 +121,13 @@ exports.getOrders = async (req, res) => {
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN tables rt ON o.table_id = rt.id
-      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.cashier_id = u.id
     `;
 
     const params = [];
 
     if (status) {
-      query += ' WHERE o.order_status = ?';
+      query += ' WHERE o.status = ?';
       params.push(status);
     }
 
@@ -189,7 +189,7 @@ exports.updateOrderStatus = async (req, res) => {
     const connection = await pool.getConnection();
 
     await connection.execute(
-      'UPDATE orders SET order_status = ? WHERE id = ?',
+      'UPDATE orders SET status = ? WHERE id = ?',
       [status, id]
     );
 
@@ -226,8 +226,8 @@ exports.getKitchenOrders = async (req, res) => {
              u.username as user_name
       FROM orders o
       LEFT JOIN tables rt ON o.table_id = rt.id
-      LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.order_status IN ('pending', 'preparing', 'ready')
+      LEFT JOIN users u ON o.cashier_id = u.id
+      WHERE o.status IN ('pending', 'preparing', 'ready')
       ORDER BY o.created_at ASC
     `);
 
