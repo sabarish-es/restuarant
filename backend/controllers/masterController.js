@@ -288,7 +288,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Recent Orders
     const [recentOrders] = await connection.execute(
-      `SELECT o.id, o.order_number, o.total, o.status, o.created_at, o.completed_at, COALESCE(c.name, 'Walk-in') as customer_name, rt.table_number 
+      `SELECT o.id, o.total, o.status, o.created_at, o.updated_at, COALESCE(c.name, 'Walk-in') as customer_name, COALESCE(rt.table_number, 'N/A') as table_number 
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
        LEFT JOIN tables rt ON o.table_id = rt.id 
