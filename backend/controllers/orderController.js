@@ -109,12 +109,16 @@ exports.createOrder = async (req, res) => {
 };
 
 exports.getOrders = async (req, res) => {
+  let connection = null;
   try {
     const { status, limit = 50, offset = 0 } = req.query;
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+
+    console.log('[v0] Fetching orders with filters:', { status, limit, offset });
 
     let query = `
-      SELECT o.*, 
+      SELECT o.id, o.table_id, o.customer_id, o.cashier_id, o.order_type, o.status, 
+             o.subtotal, o.tax, o.total, o.notes, o.created_at, o.updated_at,
              c.name as customer_name,
              rt.table_number,
              u.username as user_name
@@ -134,22 +138,41 @@ exports.getOrders = async (req, res) => {
     query += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), parseInt(offset));
 
+    console.log('[v0] Executing query:', query.substring(0, 100) + '...');
     const [orders] = await connection.execute(query, params);
     connection.release();
 
+    console.log('[v0] Orders fetched:', orders.length);
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching orders:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch orders' });
   }
 };
 
 exports.getOrderDetails = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
-    const connection = await pool.getConnection();
+    
+    if (!id) {
+      return res.status(400).json({ message: 'Order ID is required' });
+    }
+    
+    connection = await pool.getConnection();
+    console.log('[v0] Fetching order details for ID:', id);
 
     const [orders] = await connection.execute(
-      `SELECT o.*, c.name as customer_name, rt.table_number 
+      `SELECT o.id, o.table_id, o.customer_id, o.cashier_id, o.order_type, o.status,
+              o.subtotal, o.tax, o.total, o.notes, o.created_at, o.updated_at,
+              c.name as customer_name, rt.table_number 
        FROM orders o 
        LEFT JOIN customers c ON o.customer_id = c.id 
        LEFT JOIN tables rt ON o.table_id = rt.id 
@@ -163,7 +186,7 @@ exports.getOrderDetails = async (req, res) => {
     }
 
     const [items] = await connection.execute(
-      `SELECT oi.*, m.name as menu_item_name 
+      `SELECT oi.id, oi.order_id, oi.menu_item_id, oi.quantity, oi.unit_price, m.name as menu_item_name 
        FROM order_items oi 
        JOIN menu_items m ON oi.menu_item_id = m.id 
        WHERE oi.order_id = ?`,
@@ -172,26 +195,46 @@ exports.getOrderDetails = async (req, res) => {
 
     connection.release();
 
+    console.log('[v0] Order details fetched:', { orderId: orders[0].id, itemCount: items.length });
     res.json({
       order: orders[0],
       items,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error fetching order details:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch order details' });
   }
 };
 
 exports.updateOrderStatus = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const connection = await pool.getConnection();
+    if (!id || !status) {
+      return res.status(400).json({ message: 'Order ID and status are required' });
+    }
 
-    await connection.execute(
+    connection = await pool.getConnection();
+    console.log('[v0] Updating order status:', { id, status });
+
+    const [result] = await connection.execute(
       'UPDATE orders SET status = ? WHERE id = ?',
       [status, id]
     );
+
+    if (result.affectedRows === 0) {
+      connection.release();
+      return res.status(404).json({ message: 'Order not found' });
+    }
 
     // If order is completed, update table status to available
     if (status === 'completed' || status === 'served') {
@@ -205,14 +248,24 @@ exports.updateOrderStatus = async (req, res) => {
           'UPDATE tables SET status = ? WHERE id = ?',
           ['available', order[0].table_id]
         );
+        console.log('[v0] Table status updated for table:', order[0].table_id);
       }
     }
 
     connection.release();
 
-    res.json({ message: 'Order status updated' });
+    console.log('[v0] Order status updated successfully');
+    res.json({ message: 'Order status updated successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error updating order status:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: error.message || 'Failed to update order status' });
   }
 };
 
