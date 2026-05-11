@@ -425,19 +425,19 @@ export default function CashierPage() {
               />
             </div>
 
-            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pb-4 auto-rows-max">
+            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pb-4">
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => addToOrder(item)}
-                  className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden w-full h-40"
+                  className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden flex flex-col"
                 >
-                  <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group">
+                  <div className="w-full h-32 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group flex-shrink-0">
                     {item.image_url ? (
                       <img 
                         src={item.image_url} 
                         alt={item.name} 
-                        className="w-full h-full object-cover transition-opacity group-hover:opacity-90" 
+                        className="w-full h-full object-cover object-center transition-opacity group-hover:opacity-90" 
                         loading="lazy"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
@@ -455,9 +455,9 @@ export default function CashierPage() {
                       <span className="text-4xl">🍽️</span>
                     )}
                   </div>
-                  <div className="p-2">
-                    <h3 className="font-semibold text-xs truncate">{item.name}</h3>
-                    <p className="text-emerald-600 font-bold text-sm">₹{item.price}</p>
+                  <div className="p-3 flex-1 flex flex-col justify-between">
+                    <h3 className="font-semibold text-sm truncate">{item.name}</h3>
+                    <p className="text-emerald-600 font-bold text-base">₹{item.price}</p>
                   </div>
                 </div>
               ))}
