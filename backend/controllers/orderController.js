@@ -287,8 +287,12 @@ exports.printBill = async (req, res) => {
     connection.release();
 
     const order = orders[0];
-    const itemTotal = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-    console.log('[v0] Order data:', { id: order.id, total: order.total, items: items.length });
+    // Ensure all numeric values are parsed as numbers
+    const subtotal = parseFloat(order.subtotal) || 0;
+    const tax = parseFloat(order.tax) || 0;
+    const total = parseFloat(order.total) || 0;
+    
+    console.log('[v0] Order data:', { id: order.id, subtotal, tax, total, items: items.length });
     
     // Generate bill HTML
     const billHTML = `
@@ -346,13 +350,17 @@ exports.printBill = async (req, res) => {
               <div style="width: 40px; text-align: center;">Qty</div>
               <div style="width: 50px; text-align: right;">Price</div>
             </div>
-            ${items.map(item => `
-              <div class="item">
-                <div class="item-name">${item.menu_item_name}</div>
-                <div class="item-qty">${item.quantity}</div>
-                <div class="item-price">₹${(item.unit_price * item.quantity).toFixed(2)}</div>
-              </div>
-            `).join('')}
+            ${items.map(item => {
+              const itemPrice = parseFloat(item.unit_price) || 0;
+              const itemQty = parseInt(item.quantity) || 0;
+              return `
+                <div class="item">
+                  <div class="item-name">${item.menu_item_name}</div>
+                  <div class="item-qty">${itemQty}</div>
+                  <div class="item-price">₹${(itemPrice * itemQty).toFixed(2)}</div>
+                </div>
+              `;
+            }).join('')}
           </div>
           
           <div class="divider"></div>
@@ -360,15 +368,15 @@ exports.printBill = async (req, res) => {
           <div class="totals">
             <div class="total-line">
               <span>Subtotal:</span>
-              <span>₹${order.subtotal.toFixed(2)}</span>
+              <span>₹${subtotal.toFixed(2)}</span>
             </div>
             <div class="total-line">
               <span>Tax:</span>
-              <span>₹${order.tax.toFixed(2)}</span>
+              <span>₹${tax.toFixed(2)}</span>
             </div>
             <div class="total-line grand">
               <span>Total Amount:</span>
-              <span>₹${order.total.toFixed(2)}</span>
+              <span>₹${total.toFixed(2)}</span>
             </div>
           </div>
           
@@ -386,7 +394,7 @@ exports.printBill = async (req, res) => {
       billHTML,
       order: {
         id: order.id,
-        totalAmount: order.total,
+        totalAmount: total,
       }
     });
   } catch (error) {
