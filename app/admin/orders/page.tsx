@@ -24,25 +24,21 @@ export default function OrdersPage() {
       let url = `${process.env.NEXT_PUBLIC_API_URL}/orders`;
       if (statusFilter) url += `?status=${statusFilter}`;
 
-      console.log('[v0] Fetching orders from:', url);
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[v0] Orders fetched:', data?.length || 0);
         setOrders(data || []);
       } else {
         const errorData = await response.json();
         const errorMsg = errorData.message || 'Failed to fetch orders';
         setError(errorMsg);
-        console.error('[v0] Failed to fetch orders:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to fetch orders. Ensure backend server is running.';
       setError(errorMsg);
-      console.error('[v0] Orders fetch error:', errorMsg);
     } finally {
       setLoading(false);
     }

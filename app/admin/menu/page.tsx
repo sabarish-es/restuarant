@@ -276,7 +276,7 @@ export default function MenuPage() {
                     <td className="py-3 px-2 md:px-4">
                       {item.image_url && !failedImages.has(item.id) ? (
                         <img 
-                          src={item.image_url.startsWith('http') ? item.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${item.image_url}`} 
+                          src={item.image_url} 
                           alt={item.name} 
                           className="w-10 h-10 rounded object-cover" 
                           onError={() => {
@@ -284,7 +284,7 @@ export default function MenuPage() {
                           }}
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">🍽️</div>
+                        <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs">No image</div>
                       )}
                     </td>
                     <td className="py-3 px-2 md:px-4 font-medium">{item.name}</td>
