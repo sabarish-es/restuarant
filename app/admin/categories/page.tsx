@@ -56,7 +56,7 @@ export default function CategoriesPage() {
   };
 
   const handleDeleteCategory = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+    if (!confirm('Are you sure you want to delete this category? You must delete all menu items in this category first.')) return;
 
     try {
       await categoryApi.delete(id);
@@ -64,7 +64,14 @@ export default function CategoriesPage() {
       alert('Category deleted successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to delete category';
-      alert(`Error: ${errorMsg}`);
+      
+      // Provide helpful message for common error
+      let userMessage = errorMsg;
+      if (errorMsg.includes('Cannot delete category with existing menu items')) {
+        userMessage = 'This category has menu items. Please delete all menu items in this category first before deleting it.';
+      }
+      
+      alert(`Error: ${userMessage}`);
       console.error('[v0] Failed to delete category:', errorMsg);
     }
   };

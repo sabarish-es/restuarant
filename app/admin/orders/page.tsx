@@ -9,6 +9,7 @@ import { Eye } from 'lucide-react';
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
@@ -16,20 +17,32 @@ export default function OrdersPage() {
   }, [statusFilter]);
 
   const fetchOrders = async () => {
+    setLoading(true);
+    setError('');
     const token = localStorage.getItem('token');
     try {
       let url = `${process.env.NEXT_PUBLIC_API_URL}/orders`;
       if (statusFilter) url += `?status=${statusFilter}`;
 
+      console.log('[v0] Fetching orders from:', url);
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
-        setOrders(await response.json());
+        const data = await response.json();
+        console.log('[v0] Orders fetched:', data?.length || 0);
+        setOrders(data || []);
+      } else {
+        const errorData = await response.json();
+        const errorMsg = errorData.message || 'Failed to fetch orders';
+        setError(errorMsg);
+        console.error('[v0] Failed to fetch orders:', errorMsg);
       }
     } catch (error) {
-      console.error('Failed to fetch orders', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch orders. Ensure backend server is running.';
+      setError(errorMsg);
+      console.error('[v0] Orders fetch error:', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -49,6 +62,21 @@ export default function OrdersPage() {
         <p className="text-gray-500">Manage customer orders</p>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <p className="font-semibold">Error Loading Orders</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-gray-500">Loading orders...</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'All Orders', value: stats['all'], color: 'bg-blue-100' },
@@ -105,10 +133,10 @@ export default function OrdersPage() {
               <tbody>
                 {orders.map((order: any) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium text-purple-600">{order.order_number}</td>
+                    <td className="py-3 px-4 font-medium text-purple-600">#{order.id}</td>
                     <td className="py-3 px-4">{order.table_number ? `Table ${order.table_number}` : 'Takeaway'}</td>
                     <td className="py-3 px-4">{order.customer_name || 'Walk-in'}</td>
-                    <td className="py-3 px-4 font-semibold">₹{order.total}</td>
+                    <td className="py-3 px-4 font-semibold">₹{(order.total || 0).toLocaleString()}</td>
                     <td className="py-3 px-4">
                       <span
                         className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -139,6 +167,8 @@ export default function OrdersPage() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }
