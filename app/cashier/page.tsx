@@ -435,7 +435,7 @@ export default function CashierPage() {
                   <div className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group">
                     {item.image_url ? (
                       <img 
-                        src={item.image_url.startsWith('http') ? item.image_url : `http://localhost:3001${item.image_url}`} 
+                        src={item.image_url} 
                         alt={item.name} 
                         className="w-full h-full object-cover transition-opacity group-hover:opacity-90" 
                         loading="lazy"
