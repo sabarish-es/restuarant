@@ -34,6 +34,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) return '';
+    // If it's already a full URL, return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it's a base64 image, return as is
+    if (imageUrl.startsWith('data:image')) {
+      return imageUrl;
+    }
+    // If it's a relative path, prepend the API URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${apiUrl}${imageUrl}`;
+  };
+
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
@@ -170,7 +185,7 @@ export default function DashboardPage() {
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {item.image_url && (
-                      <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded object-cover" />
+                      <img src={getImageUrl(item.image_url)} alt={item.name} className="w-10 h-10 rounded object-cover" />
                     )}
                     <span className="font-medium">{item.name}</span>
                   </div>
