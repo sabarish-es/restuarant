@@ -14,6 +14,22 @@ export default function KitchenPage() {
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
 
+  // Helper function to construct proper image URLs
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) return '';
+    // If it's already a full URL, return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it's a base64 image, return as is
+    if (imageUrl.startsWith('data:image')) {
+      return imageUrl;
+    }
+    // If it's a relative path, prepend the API URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${apiUrl}${imageUrl}`;
+  };
+
   useEffect(() => {
     fetchOrders();
     const orderInterval = setInterval(fetchOrders, 5000); // Refresh orders every 5 seconds
@@ -116,7 +132,7 @@ export default function KitchenPage() {
     <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-4 text-white hover:border-gray-600 transition">
       <div className="flex justify-between items-start mb-3">
         <div>
-          <div className="text-lg font-bold text-purple-400">{order.order_number}</div>
+          <div className="text-lg font-bold text-purple-400">Order #{order.id}</div>
           <div className="text-sm text-gray-400">
             {order.table_number ? `Table ${order.table_number}` : 'Takeaway'}
           </div>
@@ -124,11 +140,23 @@ export default function KitchenPage() {
         <div className="text-xs text-gray-500">{new Date(order.created_at).toLocaleTimeString()}</div>
       </div>
 
-      <div className="mb-4 space-y-2 border-t border-gray-700 pt-3">
+      <div className="mb-4 space-y-3 border-t border-gray-700 pt-3">
         {order.items?.map((item: any, idx: number) => (
-          <div key={idx} className="flex justify-between text-sm">
-            <span className="text-gray-300">{item.quantity}x</span>
-            <span className="flex-1 ml-2">{item.menu_item_name}</span>
+          <div key={idx} className="flex gap-3 items-start text-sm border-b border-gray-700 pb-2">
+            <span className="text-gray-400 font-bold min-w-[30px]">{item.quantity}x</span>
+            <div className="flex-1">
+              <div className="text-gray-200">{item.menu_item_name}</div>
+              {item.image_url && (
+                <img 
+                  src={getImageUrl(item.image_url)} 
+                  alt={item.menu_item_name}
+                  className="w-16 h-16 rounded mt-2 object-cover border border-gray-600"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
           </div>
         ))}
       </div>

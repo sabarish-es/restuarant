@@ -264,25 +264,33 @@ exports.updateOrderStatus = async (req, res) => {
 };
 
 exports.getKitchenOrders = async (req, res) => {
+  let connection = null;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
     const [orders] = await connection.execute(`
       SELECT o.*, 
              rt.table_number,
-             u.username as user_name
+             u.username as cashier_name
       FROM orders o
       LEFT JOIN tables rt ON o.table_id = rt.id
       LEFT JOIN users u ON o.cashier_id = u.id
-      WHERE o.status IN ('pending', 'preparing', 'ready')
-      ORDER BY o.created_at ASC
+      ORDER BY 
+        CASE o.status
+          WHEN 'pending' THEN 1
+          WHEN 'preparing' THEN 2
+          WHEN 'ready' THEN 3
+          WHEN 'completed' THEN 4
+          ELSE 5
+        END,
+        o.created_at ASC
     `);
 
     // Get items for each order
     const ordersWithItems = [];
     for (const order of orders) {
       const [items] = await connection.execute(
-        `SELECT oi.*, m.name as menu_item_name 
+        `SELECT oi.*, m.name as menu_item_name, m.image_url 
          FROM order_items oi 
          JOIN menu_items m ON oi.menu_item_id = m.id 
          WHERE oi.order_id = ?`,
@@ -295,6 +303,14 @@ exports.getKitchenOrders = async (req, res) => {
 
     res.json(ordersWithItems);
   } catch (error) {
+    console.error('[v0] Error fetching kitchen orders:', error.message);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
