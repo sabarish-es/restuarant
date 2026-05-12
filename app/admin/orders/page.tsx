@@ -72,6 +72,10 @@ export default function OrdersPage() {
     'completed': orders.filter((o: any) => o.status === 'completed').length,
   };
 
+  const handleViewOrder = (orderId: number) => {
+    router.push(`/admin/orders/${orderId}`);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -173,7 +177,11 @@ export default function OrdersPage() {
                       {new Date(order.created_at).toLocaleTimeString()}
                     </td>
                     <td className="py-3 px-4">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewOrder(order.id)}
+                      >
                         <Eye className="w-4 h-4" />
                       </Button>
                     </td>
