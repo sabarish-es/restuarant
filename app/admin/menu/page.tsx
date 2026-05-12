@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Edit2, Trash2, Plus, Search } from 'lucide-react';
+import { Edit2, Trash2, Plus, Search, CheckCircle, AlertCircle } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { menuApi, categoryApi } from '@/lib/api';
 
@@ -21,6 +21,9 @@ export default function MenuPage() {
   const [imagePreview, setImagePreview] = useState('');
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('success');
   const [formData, setFormData] = useState({ 
     name: '', 
     category_id: '', 
@@ -33,6 +36,13 @@ export default function MenuPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const showCenteredAlert = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), 3000);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -69,7 +79,7 @@ export default function MenuPage() {
 
   const handleAddItem = async () => {
     if (!formData.name || !formData.category_id || !formData.price) {
-      alert('Please fill all fields');
+      showCenteredAlert('Please fill all fields', 'error');
       return;
     }
 
@@ -96,11 +106,10 @@ export default function MenuPage() {
       }
       setShowAddModal(false);
       await fetchData();
-      alert('Item added successfully');
+      showCenteredAlert('Item added successfully', 'success');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to add item';
-      alert(`Error: ${errorMsg}`);
-      console.error('[v0] Failed to add item:', errorMsg, error);
+      showCenteredAlert(`Error: ${errorMsg}`, 'error');
     }
   };
 
@@ -120,7 +129,7 @@ export default function MenuPage() {
 
   const handleUpdateItem = async () => {
     if (!formData.name || !formData.category_id || !formData.price) {
-      alert('Please fill all fields');
+      showCenteredAlert('Please fill all fields', 'error');
       return;
     }
 
@@ -139,7 +148,6 @@ export default function MenuPage() {
       // Add image URL only if a new image is provided and it's a fresh upload
       if (imagePreview && imagePreview.startsWith('data:image')) {
         itemData.imageUrl = imagePreview;
-        console.log('[v0] New image provided for update');
       }
       // If imagePreview is already a path (from existing item), don't include it to keep existing
 
@@ -153,11 +161,10 @@ export default function MenuPage() {
       }
       setShowEditModal(false);
       await fetchData();
-      alert('Item updated successfully');
+      showCenteredAlert('Item updated successfully', 'success');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to update item';
-      alert(`Error: ${errorMsg}`);
-      console.error('[v0] Failed to update item:', errorMsg, error);
+      showCenteredAlert(`Error: ${errorMsg}`, 'error');
     }
   };
 
@@ -167,11 +174,10 @@ export default function MenuPage() {
     try {
       await menuApi.delete(id);
       await fetchData();
-      alert('Item deleted successfully');
+      showCenteredAlert('Item deleted successfully', 'success');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to delete item';
-      alert(`Error: ${errorMsg}`);
-      console.error('[v0] Failed to delete item:', { id, error: errorMsg });
+      showCenteredAlert(`Error: ${errorMsg}`, 'error');
     }
   };
 
@@ -183,6 +189,27 @@ export default function MenuPage() {
 
   return (
     <div className="space-y-6">
+      {/* Centered Alert Message */}
+      {showAlert && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className={`px-8 py-6 rounded-lg shadow-2xl border-4 flex items-center gap-4 animate-pulse ${
+            alertType === 'success' 
+              ? 'bg-green-400 text-green-900 border-green-600' 
+              : alertType === 'error'
+              ? 'bg-red-400 text-red-900 border-red-600'
+              : 'bg-blue-400 text-blue-900 border-blue-600'
+          }`}>
+            {alertType === 'success' && <CheckCircle className="w-8 h-8 flex-shrink-0" />}
+            {alertType === 'error' && <AlertCircle className="w-8 h-8 flex-shrink-0" />}
+            {alertType === 'info' && <AlertCircle className="w-8 h-8 flex-shrink-0" />}
+            <div>
+              <p className="font-bold text-lg">{alertMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Menu Management</h1>
@@ -471,7 +498,9 @@ export default function MenuPage() {
             </Button>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </div>
+      </div>
     </div>
   );
 }
