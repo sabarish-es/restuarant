@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Edit2, Trash2, Plus, Search, CheckCircle, AlertCircle } from 'lucide-react';
+import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { menuApi, categoryApi } from '@/lib/api';
 
@@ -21,9 +21,6 @@ export default function MenuPage() {
   const [imagePreview, setImagePreview] = useState('');
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('success');
   const [formData, setFormData] = useState({ 
     name: '', 
     category_id: '', 
@@ -36,13 +33,6 @@ export default function MenuPage() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const showCenteredAlert = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setAlertMessage(message);
-    setAlertType(type);
-    setShowAlert(true);
-    setTimeout(() => setShowAlert(false), 3000);
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -79,7 +69,7 @@ export default function MenuPage() {
 
   const handleAddItem = async () => {
     if (!formData.name || !formData.category_id || !formData.price) {
-      showCenteredAlert('Please fill all fields', 'error');
+      alert('Please fill all fields');
       return;
     }
 
@@ -106,10 +96,11 @@ export default function MenuPage() {
       }
       setShowAddModal(false);
       await fetchData();
-      showCenteredAlert('Item added successfully', 'success');
+      alert('Item added successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to add item';
-      showCenteredAlert(`Error: ${errorMsg}`, 'error');
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to add item:', errorMsg, error);
     }
   };
 
@@ -129,7 +120,7 @@ export default function MenuPage() {
 
   const handleUpdateItem = async () => {
     if (!formData.name || !formData.category_id || !formData.price) {
-      showCenteredAlert('Please fill all fields', 'error');
+      alert('Please fill all fields');
       return;
     }
 
@@ -148,6 +139,7 @@ export default function MenuPage() {
       // Add image URL only if a new image is provided and it's a fresh upload
       if (imagePreview && imagePreview.startsWith('data:image')) {
         itemData.imageUrl = imagePreview;
+        console.log('[v0] New image provided for update');
       }
       // If imagePreview is already a path (from existing item), don't include it to keep existing
 
@@ -161,10 +153,11 @@ export default function MenuPage() {
       }
       setShowEditModal(false);
       await fetchData();
-      showCenteredAlert('Item updated successfully', 'success');
+      alert('Item updated successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to update item';
-      showCenteredAlert(`Error: ${errorMsg}`, 'error');
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to update item:', errorMsg, error);
     }
   };
 
@@ -174,10 +167,11 @@ export default function MenuPage() {
     try {
       await menuApi.delete(id);
       await fetchData();
-      showCenteredAlert('Item deleted successfully', 'success');
+      alert('Item deleted successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to delete item';
-      showCenteredAlert(`Error: ${errorMsg}`, 'error');
+      alert(`Error: ${errorMsg}`);
+      console.error('[v0] Failed to delete item:', { id, error: errorMsg });
     }
   };
 
@@ -210,7 +204,7 @@ export default function MenuPage() {
       )}
 
       <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Menu Management</h1>
           <p className="text-sm md:text-base text-gray-500">Manage your restaurant menu items</p>
@@ -499,7 +493,6 @@ export default function MenuPage() {
           </div>
         </div>
         </Modal>
-      </div>
       </div>
     </div>
   );
