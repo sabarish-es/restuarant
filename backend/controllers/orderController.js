@@ -274,7 +274,7 @@ exports.getKitchenOrders = async (req, res) => {
       FROM orders o
       LEFT JOIN tables rt ON o.table_id = rt.id
       LEFT JOIN users u ON o.cashier_id = u.id
-      WHERE o.status IN ('pending', 'preparing', 'ready', 'completed')
+      WHERE o.status IN ('pending', 'preparing', 'ready')
       ORDER BY o.created_at ASC
     `);
 
