@@ -461,12 +461,12 @@ export default function CashierPage() {
                   onClick={() => addToOrder(item)}
                   className="bg-white rounded-lg shadow hover:shadow-lg cursor-pointer transition overflow-hidden flex flex-col"
                 >
-                  <div className="w-full h-32 bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group flex-shrink-0">
+                  <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group flex-shrink-0">
                     {item.image_url ? (
                       <img 
                         src={item.image_url} 
                         alt={item.name} 
-                        className="w-full h-full object-cover object-center transition-opacity group-hover:opacity-90" 
+                        className="w-full h-full object-contain transition-opacity group-hover:opacity-90" 
                         loading="lazy"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
