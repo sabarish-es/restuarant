@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Clock, LogOut, Trash2, ShoppingCart, Printer, Save, X } from 'lucide-react';
+import { Menu, Clock, LogOut, Trash2, ShoppingCart, Printer, Save, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function CashierPage() {
   const router = useRouter();
@@ -24,6 +24,9 @@ export default function CashierPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('success');
 
   useEffect(() => {
     // Check auth first
@@ -160,13 +163,13 @@ export default function CashierPage() {
 
   const handleCheckout = async () => {
     if (currentOrder.length === 0) {
-      alert('Please add items to the order');
+      showCenteredAlert('Please add items to the order', 'error');
       return;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Authentication required. Please login again.');
+      showCenteredAlert('Authentication required. Please login again.', 'error');
       return;
     }
 
@@ -207,7 +210,7 @@ export default function CashierPage() {
         const orderId = responseData.order?.id;
         const orderNumber = responseData.order?.orderNumber || 'N/A';
         
-        alert(`Order #${orderNumber} created successfully!`);
+        showCenteredAlert(`Order #${orderNumber} created successfully!`, 'success');
         
         // Print the bill after successful order creation
         if (orderId) {
@@ -221,17 +224,17 @@ export default function CashierPage() {
         setPaymentMethod('cash');
       } else {
         const errorMsg = responseData?.message || responseData?.error || `Server error (${response.status})`;
-        alert(`Failed to create order: ${errorMsg}`);
+        showCenteredAlert(`Failed to create order: ${errorMsg}`, 'error');
       }
     } catch (error) {
-      alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showCenteredAlert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
   const handlePrintBill = async (orderId: number, orderNumber: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Authentication required. Please login again.');
+      showCenteredAlert('Authentication required. Please login again.', 'error');
       return;
     }
 
@@ -245,7 +248,7 @@ export default function CashierPage() {
         const billHTML = data.billHTML;
 
         if (!billHTML) {
-          alert(`Order #${orderNumber} created, but bill data is missing.`);
+          showCenteredAlert(`Order #${orderNumber} created, but bill data is missing.`, 'error');
           return;
         }
 
@@ -266,18 +269,25 @@ export default function CashierPage() {
               }
             }, 250);
           } catch (writeError) {
-            alert(`Bill generation failed: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
+            showCenteredAlert(`Bill generation failed: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`, 'error');
           }
         } else {
-          alert('Unable to open print window. Please check your browser popup settings.');
+          showCenteredAlert('Unable to open print window. Please check your browser popup settings.', 'error');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`Order #${orderNumber} created, but bill print failed. Error: ${errorData?.message || response.statusText}`);
+        showCenteredAlert(`Order #${orderNumber} created, but bill print failed. Error: ${errorData?.message || response.statusText}`, 'error');
       }
     } catch (error) {
-      alert(`Order created but print failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showCenteredAlert(`Order created but print failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
+  };
+
+  const showCenteredAlert = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), 3000);
   };
 
   const handleLogout = () => {
@@ -345,14 +355,35 @@ export default function CashierPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      {/* Centered Alert Message */}
+      {showAlert && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className={`px-8 py-6 rounded-lg shadow-2xl border-4 flex items-center gap-4 animate-pulse ${
+            alertType === 'success' 
+              ? 'bg-green-400 text-green-900 border-green-600' 
+              : alertType === 'error'
+              ? 'bg-red-400 text-red-900 border-red-600'
+              : 'bg-blue-400 text-blue-900 border-blue-600'
+          }`}>
+            {alertType === 'success' && <CheckCircle className="w-8 h-8 flex-shrink-0" />}
+            {alertType === 'error' && <AlertCircle className="w-8 h-8 flex-shrink-0" />}
+            {alertType === 'info' && <AlertCircle className="w-8 h-8 flex-shrink-0" />}
+            <div>
+              <p className="font-bold text-lg">{alertMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+    <div className="min-h-screen bg-gray-100 flex">
       {/* Left Sidebar - Menu Categories */}
-      <div className={`${sidebarOpen ? 'w-40' : 'w-0'} bg-emerald-600 text-white transition-all duration-300 overflow-hidden flex flex-col`}>
-        <div className="p-4 border-b border-emerald-700">
+      <div className={`${sidebarOpen ? 'w-40' : 'w-0'} bg-emerald-600 text-white transition-all duration-300 overflow-hidden flex flex-col h-screen`}>
+        <div className="p-4 border-b border-emerald-700 flex-shrink-0">
           <h2 className="font-bold text-lg">Cashier</h2>
           <p className="text-xs text-emerald-100">POS System</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-3 max-h-[calc(100vh-180px)]">
           <Button
             onClick={() => setSelectedCategory(null)}
             variant={selectedCategory === null ? 'default' : 'ghost'}
@@ -380,7 +411,7 @@ export default function CashierPage() {
           )}
         </div>
 
-        <div className="p-3 border-t border-emerald-700">
+        <div className="p-3 border-t border-emerald-700 flex-shrink-0">
           <Button
             onClick={handleLogout}
             variant="ghost"
@@ -595,7 +626,7 @@ export default function CashierPage() {
                       if (currentOrder.length > 0) {
                         setHeldOrders([...heldOrders, { id: Date.now(), items: currentOrder, total, tax, subtotal }]);
                         setCurrentOrder([]);
-                        alert('Order held successfully!');
+                        showCenteredAlert('Order held successfully!', 'success');
                       }
                     }}
                     variant="outline"

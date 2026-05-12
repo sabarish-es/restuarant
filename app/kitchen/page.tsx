@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { LogOut, Volume2, CheckCircle } from 'lucide-react';
+import { LogOut, Volume2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function KitchenPage() {
   const router = useRouter();
   const [orders, setOrders] = useState({ new: [], preparing: [], ready: [], completed: [] });
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -59,10 +62,48 @@ export default function KitchenPage() {
         },
         body: JSON.stringify({ status }),
       });
+      
+      // Play sound and show alert if order is marked as ready
+      if (status === 'ready') {
+        playSound();
+        showAlertMessage('Order is ready! Notify cashier.');
+      }
+      
       fetchOrders();
     } catch (error) {
       console.error('Failed to update order', error);
     }
+  };
+
+  const playSound = () => {
+    if (!soundEnabled) return;
+    
+    // Create a simple beep sound using Web Audio API
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Frequency in Hz
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.error('Failed to play sound:', error);
+    }
+  };
+
+  const showAlertMessage = (message: string) => {
+    setAlertMessage(message);
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), 3000);
   };
 
   const handleLogout = () => {
@@ -157,6 +198,18 @@ export default function KitchenPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4">
+      {/* Alert Message */}
+      {showAlert && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className="bg-yellow-400 text-yellow-900 px-8 py-6 rounded-lg shadow-2xl border-4 border-yellow-600 flex items-center gap-4 animate-pulse">
+            <AlertCircle className="w-8 h-8 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-lg">{alertMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -164,9 +217,14 @@ export default function KitchenPage() {
           <h1 className="text-2xl font-bold">Kitchen Display System</h1>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" className="text-gray-300">
+          <Button 
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            variant={soundEnabled ? "default" : "outline"}
+            size="sm" 
+            className={soundEnabled ? "bg-green-600 hover:bg-green-700 text-white" : "text-gray-300"}
+          >
             <Volume2 className="w-4 h-4 mr-2" />
-            Sound Alert
+            {soundEnabled ? "Sound On" : "Sound Off"}
           </Button>
           <span className="text-sm text-gray-400">{currentTime.toLocaleTimeString()}</span>
           <Button
