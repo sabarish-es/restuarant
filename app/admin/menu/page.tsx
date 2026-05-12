@@ -183,27 +183,6 @@ export default function MenuPage() {
 
   return (
     <div className="space-y-6">
-      {/* Centered Alert Message */}
-      {showAlert && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className={`px-8 py-6 rounded-lg shadow-2xl border-4 flex items-center gap-4 animate-pulse ${
-            alertType === 'success' 
-              ? 'bg-green-400 text-green-900 border-green-600' 
-              : alertType === 'error'
-              ? 'bg-red-400 text-red-900 border-red-600'
-              : 'bg-blue-400 text-blue-900 border-blue-600'
-          }`}>
-            {alertType === 'success' && <CheckCircle className="w-8 h-8 flex-shrink-0" />}
-            {alertType === 'error' && <AlertCircle className="w-8 h-8 flex-shrink-0" />}
-            {alertType === 'info' && <AlertCircle className="w-8 h-8 flex-shrink-0" />}
-            <div>
-              <p className="font-bold text-lg">{alertMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Menu Management</h1>
