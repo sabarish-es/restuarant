@@ -28,6 +28,22 @@ export default function CashierPage() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('success');
 
+  // Helper function to construct proper image URLs
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) return '';
+    // If it's already a full URL, return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it's a base64 image, return as is
+    if (imageUrl.startsWith('data:image')) {
+      return imageUrl;
+    }
+    // If it's a relative path, prepend the API URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${apiUrl}${imageUrl}`;
+  };
+
   useEffect(() => {
     // Check auth first
     const token = localStorage.getItem('token');
@@ -464,7 +480,7 @@ export default function CashierPage() {
                   <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center text-4xl overflow-hidden relative group flex-shrink-0">
                     {item.image_url ? (
                       <img 
-                        src={item.image_url} 
+                        src={getImageUrl(item.image_url)} 
                         alt={item.name} 
                         className="w-full h-full object-contain transition-opacity group-hover:opacity-90" 
                         loading="lazy"
