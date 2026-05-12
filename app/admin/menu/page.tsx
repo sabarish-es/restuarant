@@ -89,9 +89,9 @@ export default function MenuPage() {
         description: formData.description || null,
       };
 
-      // Store image as base64 if provided
+      // Store image as base64 if provided (use camelCase imageUrl for backend)
       if (imagePreview && imagePreview.startsWith('data:image')) {
-        itemData.image_url = imagePreview;
+        itemData.imageUrl = imagePreview;
       }
       
       const response = await menuApi.create(itemData);
@@ -143,9 +143,12 @@ export default function MenuPage() {
         status: formData.status || 'active',
       };
 
-      // Store new image as base64 if provided
+      // Store new image as base64 if provided (use camelCase imageUrl for backend)
       if (imagePreview && imagePreview.startsWith('data:image')) {
-        itemData.image_url = imagePreview;
+        itemData.imageUrl = imagePreview;
+      } else if (imagePreview) {
+        // If imagePreview exists but isn't base64, it's an existing image URL, pass it to preserve
+        itemData.imageUrl = imagePreview;
       }
 
       await menuApi.update(editingItemId, itemData);
