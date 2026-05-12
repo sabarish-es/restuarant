@@ -51,7 +51,10 @@ export default function TablesPage() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/tables/${tableId}/status`, {
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/tables/${tableId}/status`;
+      console.log('[v0] Updating table status:', { tableId, status, apiUrl });
+
+      const response = await fetch(apiUrl, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -60,8 +63,13 @@ export default function TablesPage() {
         body: JSON.stringify({ status }),
       });
 
+      console.log('[v0] Response status:', response.status, response.statusText);
+
+      const responseData = await response.json();
+      console.log('[v0] Response data:', responseData);
+
       if (!response.ok) {
-        throw new Error(`Failed to update table status: ${response.statusText}`);
+        throw new Error(`${response.status}: ${responseData.message || response.statusText}`);
       }
 
       console.log('[v0] Table status updated successfully');
