@@ -32,13 +32,13 @@ export default function KitchenPage() {
 
   useEffect(() => {
     fetchOrders();
-    const orderInterval = setInterval(fetchOrders, 30000); // Refresh orders every 30 seconds
+    // const orderInterval = setInterval(fetchOrders, 30000); // Refresh orders every 30 seconds
     
     // Update clock every second
     const clockInterval = setInterval(() => setCurrentTime(new Date()), 1000);
     
     return () => {
-      clearInterval(orderInterval);
+      // clearInterval(orderInterval);
       clearInterval(clockInterval);
     };
   }, []);
