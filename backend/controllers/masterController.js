@@ -28,15 +28,44 @@ exports.getTables = async (req, res) => {
 };
 
 exports.updateTableStatus = async (req, res) => {
+  let connection = null;
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const connection = await pool.getConnection();
-    await connection.execute('UPDATE tables SET status = ? WHERE id = ?', [status, id]);
+
+    console.log('[v0] Updating table status:', { id, status });
+
+    if (!id || !status) {
+      return res.status(400).json({ message: 'Table ID and status are required' });
+    }
+
+    connection = await pool.getConnection();
+    
+    // First check if table exists
+    const [existingTable] = await connection.execute('SELECT id FROM tables WHERE id = ?', [id]);
+    
+    if (existingTable.length === 0) {
+      connection.release();
+      return res.status(404).json({ message: 'Table not found' });
+    }
+
+    // Update the table status
+    const [result] = await connection.execute('UPDATE tables SET status = ? WHERE id = ?', [status, id]);
+    
+    console.log('[v0] Table status update result:', result);
+    
     connection.release();
-    res.json({ message: 'Table status updated' });
+    res.json({ message: 'Table status updated successfully', id, status });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[v0] Error updating table status:', error.message, error.code);
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('[v0] Error releasing connection:', releaseError.message);
+      }
+    }
+    res.status(500).json({ message: 'Failed to update table status', error: error.message });
   }
 };
 
