@@ -58,17 +58,20 @@ export default function MenuPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
+      // Validate file size (max 2MB for base64 storage)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image size must be less than 2MB');
         return;
       }
 
       setFormData({ ...formData, image: file });
       
-      // Create a preview using object URL instead of base64
-      const objectUrl = URL.createObjectURL(file);
-      setImagePreview(objectUrl);
+      // Convert to base64 for preview and storage
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -86,27 +89,9 @@ export default function MenuPage() {
         description: formData.description || null,
       };
 
-      // Upload image file if provided
-      if (formData.image) {
-        const formDataWithFile = new FormData();
-        formDataWithFile.append('file', formData.image);
-        
-        try {
-          const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/upload`, {
-            method: 'POST',
-            body: formDataWithFile,
-            headers: {
-              'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-            },
-          });
-
-          if (uploadResponse.ok) {
-            const uploadedData = await uploadResponse.json();
-            itemData.imageUrl = uploadedData.imageUrl || uploadedData.url;
-          }
-        } catch (uploadError) {
-          console.warn('[v0] Image upload failed, proceeding without image:', uploadError);
-        }
+      // Store image as base64 if provided
+      if (imagePreview && imagePreview.startsWith('data:image')) {
+        itemData.image_url = imagePreview;
       }
       
       const response = await menuApi.create(itemData);
@@ -158,30 +143,10 @@ export default function MenuPage() {
         status: formData.status || 'active',
       };
 
-      // Upload new image if provided
-      if (formData.image) {
-        const formDataWithFile = new FormData();
-        formDataWithFile.append('file', formData.image);
-        
-        try {
-          const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/upload`, {
-            method: 'POST',
-            body: formDataWithFile,
-            headers: {
-              'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-            },
-          });
-
-          if (uploadResponse.ok) {
-            const uploadedData = await uploadResponse.json();
-            itemData.imageUrl = uploadedData.imageUrl || uploadedData.url;
-          }
-        } catch (uploadError) {
-          console.warn('[v0] Image upload failed, proceeding without image update:', uploadError);
-        }
+      // Store new image as base64 if provided
+      if (imagePreview && imagePreview.startsWith('data:image')) {
+        itemData.image_url = imagePreview;
       }
-      // If no new image file but imagePreview exists and is not a blob URL, keep existing image
-      // Otherwise don't set imageUrl to preserve existing image
 
       await menuApi.update(editingItemId, itemData);
       
