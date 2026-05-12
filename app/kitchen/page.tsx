@@ -40,7 +40,7 @@ export default function KitchenPage() {
           new: data.filter((o: any) => o.status === 'pending'),
           preparing: data.filter((o: any) => o.status === 'preparing'),
           ready: data.filter((o: any) => o.status === 'ready'),
-          completed: data.filter((o: any) => o.status === 'completed').slice(0, 5),
+          completed: data.filter((o: any) => o.status === 'completed'),
         };
         setOrders(grouped);
       }
