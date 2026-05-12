@@ -183,15 +183,31 @@ exports.createMenuItem = async (req, res) => {
     // Handle base64 image data
     if (imageUrl && imageUrl.startsWith('data:image')) {
       try {
-        const matches = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+        // Match data URI format: data:image/[format];base64,[data]
+        const matches = imageUrl.match(/^data:image\/([a-z+]+);base64,(.+)$/i);
         if (matches) {
-          const imageType = matches[1];
+          let imageType = matches[1].toLowerCase();
           const imageData = matches[2];
+          
+          // Map common MIME types to file extensions
+          const mimeToExt = {
+            'jpeg': 'jpg',
+            'jpg': 'jpg',
+            'png': 'png',
+            'gif': 'gif',
+            'webp': 'webp',
+            'svg+xml': 'svg',
+            'x-icon': 'ico'
+          };
+          
+          // Use mapped extension or the original type
+          const fileExt = mimeToExt[imageType] || imageType;
+          
           const buffer = Buffer.from(imageData, 'base64');
           
           // Generate unique filename
           const timestamp = Date.now();
-          const filename = `menu-item-${timestamp}.${imageType}`;
+          const filename = `menu-item-${timestamp}.${fileExt}`;
           const filepath = path.join(uploadsDir, filename);
           
           // Save file to disk
@@ -199,7 +215,9 @@ exports.createMenuItem = async (req, res) => {
           
           // Store relative path in database (not base64, just the path)
           savedImageUrl = `/uploads/menu-items/${filename}`;
-          console.log('[v0] Image saved to:', savedImageUrl);
+          console.log('[v0] Image saved to:', savedImageUrl, `(format: ${imageType})`);
+        } else {
+          console.warn('[v0] Invalid image data format, could not parse');
         }
       } catch (imageError) {
         console.error('[v0] Error processing image:', imageError.message);
@@ -258,19 +276,33 @@ exports.updateMenuItem = async (req, res) => {
         }
         
         // Save new image
-        const matches = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+        const matches = imageUrl.match(/^data:image\/([a-z+]+);base64,(.+)$/i);
         if (matches) {
-          const imageType = matches[1];
+          let imageType = matches[1].toLowerCase();
           const imageData = matches[2];
+          
+          // Map common MIME types to file extensions
+          const mimeToExt = {
+            'jpeg': 'jpg',
+            'jpg': 'jpg',
+            'png': 'png',
+            'gif': 'gif',
+            'webp': 'webp',
+            'svg+xml': 'svg',
+            'x-icon': 'ico'
+          };
+          
+          // Use mapped extension or the original type
+          const fileExt = mimeToExt[imageType] || imageType;
           const buffer = Buffer.from(imageData, 'base64');
           
           const timestamp = Date.now();
-          const filename = `menu-item-${timestamp}.${imageType}`;
+          const filename = `menu-item-${timestamp}.${fileExt}`;
           const filepath = path.join(uploadsDir, filename);
           
           fs.writeFileSync(filepath, buffer);
           savedImageUrl = `/uploads/menu-items/${filename}`;
-          console.log('[v0] Image updated to:', savedImageUrl);
+          console.log('[v0] Image updated to:', savedImageUrl, `(format: ${imageType})`);
         }
       } catch (imageError) {
         console.error('[v0] Error processing image update:', imageError.message);
