@@ -472,7 +472,6 @@ export default function MenuPage() {
           </div>
         </div>
         </Modal>
-      </div>
     </div>
   );
 }
