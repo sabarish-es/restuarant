@@ -19,7 +19,7 @@ export default function TablesPage() {
     try {
       const token = localStorage.getItem('token');
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/tables`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -51,7 +51,7 @@ export default function TablesPage() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tables/${tableId}/status`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/tables/${tableId}/status`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${token}`,
