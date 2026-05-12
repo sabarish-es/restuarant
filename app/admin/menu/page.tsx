@@ -189,6 +189,21 @@ export default function MenuPage() {
     (!selectedCategory || item.category_id === parseInt(selectedCategory))
   );
 
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) return '';
+    // If it's already a full URL, return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it's a base64 image, return as is
+    if (imageUrl.startsWith('data:image')) {
+      return imageUrl;
+    }
+    // If it's a relative path, prepend the API URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${apiUrl}${imageUrl}`;
+  };
+
   return (
     <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -265,7 +280,7 @@ export default function MenuPage() {
                     <td className="py-3 px-2 md:px-4">
                       {item.image_url && !failedImages.has(item.id) ? (
                         <img 
-                          src={item.image_url} 
+                          src={getImageUrl(item.image_url)} 
                           alt={item.name} 
                           className="w-10 h-10 rounded object-cover" 
                           onError={() => {
