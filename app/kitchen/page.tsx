@@ -46,7 +46,8 @@ export default function KitchenPage() {
   const fetchOrders = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/kitchen-orders`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${apiBase}/kitchen-orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -70,7 +71,8 @@ export default function KitchenPage() {
   const updateOrderStatus = async (orderId: number, status: string) => {
     const token = localStorage.getItem('token');
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/orders/${orderId}/status`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      await fetch(`${apiBase}/orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

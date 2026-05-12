@@ -18,8 +18,9 @@ export default function TablesPage() {
     setError('');
     try {
       const token = localStorage.getItem('token');
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/tables`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      
+      const response = await fetch(`${apiBase}/tables`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -51,7 +52,8 @@ export default function TablesPage() {
         return;
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/api/tables/${tableId}/status`;
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const apiUrl = `${apiBase}/tables/${tableId}/status`;
       console.log('[v0] Updating table status:', { tableId, status, apiUrl });
 
       const response = await fetch(apiUrl, {
