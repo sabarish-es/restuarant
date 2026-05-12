@@ -374,8 +374,6 @@ export default function CashierPage() {
           </div>
         </div>
       )}
-
-    <div className="min-h-screen bg-gray-100 flex">
       {/* Left Sidebar - Menu Categories */}
       <div className={`${sidebarOpen ? 'w-40' : 'w-0'} bg-emerald-600 text-white transition-all duration-300 overflow-hidden flex flex-col h-screen`}>
         <div className="p-4 border-b border-emerald-700 flex-shrink-0">
